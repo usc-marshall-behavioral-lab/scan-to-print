@@ -52,7 +52,7 @@ def detect_printer():
 
 def make_hp_label(sona_id, timestamp):
     path = tempfile.mktemp(suffix=".pdf")
-    w, h = 6 * inch, 4 * inch
+    h, w = 6 * inch, 4 * inch
     c = rl_canvas.Canvas(path, pagesize=(w, h))
 
     c.setFillColor(colors.white)
