@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 MBRL Scan-to-Print — Local Print Server
-Serves the webapp and handles print jobs.
 Run on the lab Mac: python3 server.py
 Access from any device on the lab network: http://<mac-ip>:5050
 """
 
 import os
+import io
 import subprocess
 import tempfile
 from datetime import datetime
@@ -15,9 +15,11 @@ from flask_cors import CORS
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas as rl_canvas
 from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
+import qrcode
 
 app = Flask(__name__)
-CORS(app, origins=['https://usc-marshall-behavioral-lab.github.io', 'http://localhost:5050', 'http://127.0.0.1:5050'])
+CORS(app)
 
 HP_KEYWORDS   = ["ke203", "hp", "direct thermal"]
 DYMO_KEYWORDS = ["dymo", "labelwriter"]
@@ -48,53 +50,145 @@ def detect_printer():
     return None, None
 
 
+# ── QR code helper ────────────────────────────────────────────────────────────
+
+def make_qr(data):
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return ImageReader(buf)
+
+
 # ── Label generation ──────────────────────────────────────────────────────────
 
 def make_hp_label(sona_id, timestamp):
+    """4x6 label, defined as landscape (w=6, h=4) so printer cannot rotate it."""
     path = tempfile.mktemp(suffix=".pdf")
-    h, w = 6 * inch, 4 * inch
-    c = rl_canvas.Canvas(path, pagesize=(w, h))
+
+    # Swap w/h so PDF is natively landscape — printer has no choice
+    h, w = 6 * inch, 4 * inch   # h=6wide, w=4tall in landscape
+    c = rl_canvas.Canvas(path, pagesize=(h, w))
+
+    W, H = h, w   # W = 6in wide, H = 4in tall
 
     c.setFillColor(colors.white)
-    c.rect(0, 0, w, h, fill=1, stroke=0)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    # Top accent bar (USC Cardinal)
-    c.setFillColorRGB(0.600, 0.000, 0.000)
-    c.rect(0, h - 0.18 * inch, w, 0.18 * inch, fill=1, stroke=0)
+    # Cardinal top bar
+    c.setFillColorRGB(0.6, 0.0, 0.0)
+    c.rect(0, H - 0.22 * inch, W, 0.22 * inch, fill=1, stroke=0)
 
-    # Header
-    c.setFillColorRGB(0.40, 0.40, 0.40)
-    c.setFont("Helvetica", 11)
-    c.drawCentredString(w / 2, h - 0.52 * inch, "MARSHALL BEHAVIORAL RESEARCH LAB")
+    # Gold accent line
+    c.setFillColorRGB(1.0, 0.80, 0.0)
+    c.rect(0, H - 0.255 * inch, W, 0.035 * inch, fill=1, stroke=0)
 
-    # Divider
+    # Header text
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawCentredString(W / 2, H - 0.158 * inch,
+                        "USC MARSHALL  ·  BEHAVIORAL RESEARCH LAB")
+
+    # Column split: left 56%, right 44%
+    left_pad  = 0.35 * inch
+    divider_x = W * 0.56
+    left_cx   = left_pad + (divider_x - left_pad) / 2
+
+    # PARTICIPANT ID label
+    c.setFillColorRGB(0.50, 0.45, 0.40)
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(left_cx, H - 0.62 * inch, "PARTICIPANT ID")
+
     c.setStrokeColorRGB(0.88, 0.88, 0.88)
     c.setLineWidth(0.5)
-    c.line(0.4 * inch, h - 0.68 * inch, w - 0.4 * inch, h - 0.68 * inch)
+    c.line(left_pad, H - 0.72 * inch, divider_x - 0.15 * inch, H - 0.72 * inch)
 
-    # Subheader
-    c.setFillColorRGB(0.55, 0.60, 0.70)
-    c.setFont("Helvetica", 13)
-    c.drawCentredString(w / 2, h - 1.05 * inch, "PARTICIPANT ID")
+    # Auto-fit SONA ID to available width
+    avail_w = divider_x - left_pad - 0.2 * inch
+    for fs in range(80, 30, -2):
+        c.setFont("Helvetica-Bold", fs)
+        if c.stringWidth(sona_id, "Helvetica-Bold", fs) <= avail_w:
+            break
 
-    # SONA ID
-    c.setFillColorRGB(0.05, 0.09, 0.14)
-    font_size = 96 if len(sona_id) <= 6 else 72
-    c.setFont("Helvetica-Bold", font_size)
-    c.drawCentredString(w / 2, h - 2.45 * inch, sona_id)
+    c.setFillColorRGB(0.11, 0.08, 0.04)
+    c.drawCentredString(left_cx, H - 1.82 * inch, sona_id)
 
-    # Bottom divider + timestamp
+    # Instruction box
+    box_y = 0.68 * inch
+    box_h = 0.66 * inch
+    box_w = divider_x - left_pad - 0.1 * inch
+    c.setFillColorRGB(1.0, 0.97, 0.88)
+    c.setStrokeColorRGB(1.0, 0.80, 0.0)
+    c.setLineWidth(0.6)
+    c.roundRect(left_pad, box_y, box_w, box_h, 3, fill=1, stroke=1)
+
+    line_h = 0.135 * inch
+    top_y  = box_y + box_h - 0.13 * inch
+
+    c.setFillColorRGB(0.25, 0.18, 0.08)
+    c.setFont("Helvetica-Bold", 6.5)
+    c.drawCentredString(left_cx, top_y,
+        "Enter this number when prompted during your study.")
+
+    c.setFont("Helvetica", 6)
+    c.setFillColorRGB(0.40, 0.32, 0.18)
+    c.drawCentredString(left_cx, top_y - line_h,
+        "May appear as: SONA ID, Participant ID, Subject ID, or User ID")
+
+    # Divider inside box
+    c.setStrokeColorRGB(1.0, 0.80, 0.0)
+    c.setLineWidth(0.4)
+    c.line(left_pad + 0.1 * inch, top_y - line_h * 1.55,
+           left_pad + box_w - 0.1 * inch, top_y - line_h * 1.55)
+
+    c.setFont("Helvetica-Bold", 6.5)
+    c.setFillColorRGB(0.6, 0.0, 0.0)
+    c.drawCentredString(left_cx, top_y - line_h * 2.1,
+        "Keep this label — your researcher will collect it")
+    c.setFont("Helvetica", 6)
+    c.setFillColorRGB(0.40, 0.32, 0.18)
+    c.drawCentredString(left_cx, top_y - line_h * 3.1,
+        "from you upon completion to grant your credit (by next day).")
+
+    # Vertical divider
     c.setStrokeColorRGB(0.88, 0.88, 0.88)
-    c.line(0.4 * inch, 0.55 * inch, w - 0.4 * inch, 0.55 * inch)
-    c.setFillColorRGB(0.65, 0.68, 0.75)
-    c.setFont("Helvetica", 9)
-    c.drawCentredString(w / 2, 0.3 * inch, timestamp)
+    c.setLineWidth(0.5)
+    c.line(divider_x, H - 0.38 * inch, divider_x, 0.50 * inch)
+
+    # Right column: QR code
+    right_w = W - divider_x
+    qr_size = 1.85 * inch
+    qr_x    = divider_x + (right_w - qr_size) / 2
+    qr_y    = H - 0.40 * inch - qr_size
+    c.drawImage(make_qr(sona_id), qr_x, qr_y,
+                width=qr_size, height=qr_size, preserveAspectRatio=True)
+
+    c.setFillColorRGB(0.65, 0.60, 0.55)
+    c.setFont("Helvetica", 7)
+    c.drawCentredString(divider_x + right_w / 2, qr_y - 0.14 * inch,
+                        "Scan to verify")
+
+    # Bottom timestamp
+    c.setStrokeColorRGB(0.88, 0.88, 0.88)
+    c.line(0.3 * inch, 0.48 * inch, W - 0.3 * inch, 0.48 * inch)
+    c.setFillColorRGB(0.65, 0.60, 0.55)
+    c.setFont("Helvetica", 7.5)
+    c.drawCentredString(W / 2, 0.27 * inch, timestamp)
 
     c.save()
     return path
 
 
 def make_dymo_label(sona_id, timestamp):
+    """3.5x1.12 Dymo 30252 label with small QR code."""
     path = tempfile.mktemp(suffix=".pdf")
     w, h = 3.5 * inch, 1.12 * inch
     c = rl_canvas.Canvas(path, pagesize=(w, h))
@@ -102,21 +196,30 @@ def make_dymo_label(sona_id, timestamp):
     c.setFillColor(colors.white)
     c.rect(0, 0, w, h, fill=1, stroke=0)
 
-    c.setFillColorRGB(0.600, 0.000, 0.000)
+    c.setFillColorRGB(0.6, 0.0, 0.0)
     c.rect(0, 0, 0.07 * inch, h, fill=1, stroke=0)
 
-    c.setFillColorRGB(0.55, 0.60, 0.70)
+    c.setFillColorRGB(0.50, 0.45, 0.40)
     c.setFont("Helvetica", 6)
     c.drawString(0.16 * inch, h - 0.18 * inch, "MBRL  ·  PARTICIPANT ID")
 
-    c.setFillColorRGB(0.05, 0.09, 0.14)
-    font_size = 36 if len(sona_id) <= 6 else 28
-    c.setFont("Helvetica-Bold", font_size)
-    c.drawString(0.16 * inch, 0.28 * inch, sona_id)
+    avail_w = w * 0.62
+    for fs in range(34, 14, -2):
+        c.setFont("Helvetica-Bold", fs)
+        if c.stringWidth(sona_id, "Helvetica-Bold", fs) <= avail_w:
+            break
 
-    c.setFillColorRGB(0.65, 0.68, 0.75)
+    c.setFillColorRGB(0.05, 0.09, 0.14)
+    c.drawString(0.16 * inch, 0.25 * inch, sona_id)
+
+    qr_size = 0.80 * inch
+    c.drawImage(make_qr(sona_id),
+                w - qr_size - 0.08 * inch, (h - qr_size) / 2,
+                width=qr_size, height=qr_size, preserveAspectRatio=True)
+
+    c.setFillColorRGB(0.65, 0.60, 0.55)
     c.setFont("Helvetica", 5)
-    c.drawRightString(w - 0.08 * inch, 0.08 * inch, timestamp)
+    c.drawString(0.16 * inch, 0.08 * inch, timestamp)
 
     c.save()
     return path
@@ -140,7 +243,7 @@ def status():
 
 @app.route("/api/print", methods=["POST"])
 def print_label():
-    data = request.get_json()
+    data    = request.get_json()
     sona_id = (data.get("sona_id") or "").strip()
 
     if not sona_id:
@@ -150,16 +253,20 @@ def print_label():
     if not name:
         return jsonify({"ok": False, "error": "No printer found"}), 503
 
-    ts = datetime.now().strftime("%b %d, %Y  ·  %I:%M %p")
-    pdf_path = make_dymo_label(sona_id, ts) if ptype == "dymo" else make_hp_label(sona_id, ts)
+    ts       = datetime.now().strftime("%b %d, %Y  ·  %I:%M %p")
+    pdf_path = (make_dymo_label(sona_id, ts)
+                if ptype == "dymo" else make_hp_label(sona_id, ts))
 
     try:
         result = subprocess.run(
-            ["lp", "-d", name, pdf_path],
+            ["lp", "-d", name,
+             "-o", "media=4x6",
+             "-o", "orientation-requested=4",
+             pdf_path],
             capture_output=True, text=True, timeout=10
         )
         success = result.returncode == 0
-    except Exception as e:
+    except Exception:
         success = False
     finally:
         try:
