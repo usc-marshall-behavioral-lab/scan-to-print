@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBRL Scan-to-Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cardinal:      #990000;
+  --cardinal-dark: #700000;
+  --gold:          #FFCC00;
+  --bg:            #f5f3f0;
+  --white:         #ffffff;
+  --ink:           #1c1410;
+  --muted:         #8a7e72;
+  --border:        #ddd8d0;
+  --serif:         'Libre Baskerville', Georgia, serif;
+  --sans:          'Inter', system-ui, sans-serif;
+}
+
+html, body {
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top bar ── */
+.topbar {
+  background: var(--cardinal);
+  padding: 0 32px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  flex-shrink: 0;
+}
+.topbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gold);
+}
+.brand { display: flex; flex-direction: column; line-height: 1.2; }
+.brand-usc {
+  font-family: var(--serif); font-size: 9px; font-weight: 700;
+  color: var(--gold); letter-spacing: 0.14em; text-transform: uppercase;
+}
+.brand-lab {
+  font-family: var(--serif); font-size: 14px; font-weight: 700; color: #fff;
+}
+.topbar-div { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
+.topbar-page { font-size: 12px; color: rgba(255,255,255,0.55); }
+
+/* ── Main layout ── */
+.main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.card {
+  background: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.05);
+  width: 100%;
+  max-width: 520px;
+  overflow: hidden;
+}
+
+/* ── Card header ── */
+.card-header {
+  background: var(--cardinal);
+  padding: 28px 32px 24px;
+  position: relative;
+}
+.card-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gold);
+}
+.card-eyebrow {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 6px;
+}
+.card-title {
+  font-family: var(--serif); font-size: 28px; font-weight: 700; color: #fff;
+  line-height: 1.2;
+}
+.card-sub {
+  font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 6px;
+}
+
+/* ── Card body ── */
+.card-body { padding: 28px 32px 32px; }
+
+/* ── Launch button ── */
+.launch-btn {
+  display: block; width: 100%;
+  background: var(--cardinal);
+  color: #fff;
+  text-decoration: none;
+  text-align: center;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 16px 24px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(153,0,0,0.25);
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.launch-btn::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gold);
+  opacity: 0.8;
+}
+.launch-btn:hover {
+  background: var(--cardinal-dark);
+  box-shadow: 0 4px 16px rgba(153,0,0,0.3);
+  transform: translateY(-1px);
+}
+.launch-btn:active { transform: translateY(0); }
+.launch-btn-icon { font-size: 20px; margin-right: 10px; vertical-align: -2px; }
+
+.launch-hint {
+  text-align: center; font-size: 11.5px; color: var(--muted); margin-bottom: 24px;
+}
+.launch-hint code {
+  font-size: 11px; background: var(--bg); padding: 2px 6px;
+  border-radius: 4px; border: 1px solid var(--border); color: var(--cardinal);
+}
+
+/* ── Divider ── */
+.divider {
+  border: none; border-top: 1px solid var(--border); margin: 0 0 22px;
+}
+
+/* ── How-to section ── */
+.how-title {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+}
+
+.steps { display: flex; flex-direction: column; gap: 10px; }
+
+.step {
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.step-num {
+  flex-shrink: 0;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--cardinal);
+  color: #fff; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.step-text { font-size: 13.5px; color: var(--ink); line-height: 1.5; }
+.step-text strong { font-weight: 600; }
+.step-text .note { font-size: 12px; color: var(--muted); display: block; margin-top: 2px; }
+
+/* ── Info box ── */
+.info-box {
+  background: #fffbee;
+  border: 1px solid #f0d060;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-top: 20px;
+  font-size: 12px;
+  color: #5a4500;
+  line-height: 1.55;
+}
+.info-box strong { color: var(--cardinal); }
+
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 11.5px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+footer a { color: var(--cardinal); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* ── Mobile ── */
+@media (max-width: 560px) {
+  .topbar { padding: 0 16px; }
+  .card-header { padding: 22px 20px 18px; }
+  .card-title { font-size: 24px; }
+  .card-body { padding: 22px 20px 24px; }
+  .launch-btn { font-size: 15px; padding: 14px 20px; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-usc">USC Marshall</span>
+    <span class="brand-lab">Behavioral Research Lab</span>
+  </div>
+  <div class="topbar-div"></div>
+  <span class="topbar-page">Scan-to-Print</span>
+</div>
+
+<main class="main">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-eyebrow">Participant Check-In</div>
+      <div class="card-title">Scan-to-Print</div>
+      <div class="card-sub">Tap below to open the lab printer app</div>
+    </div>
+    <div class="card-body">
+
+      <a class="launch-btn" id="launch-btn" href="http://192.168.0.163:5050" target="_blank">
+        <span class="launch-btn-icon">🖨</span> Launch Lab App
+      </a>
+      <div class="launch-hint">
+        Opens at <code>192.168.0.163:5050</code> — must be on lab WiFi
+      </div>
+
+      <hr class="divider">
+
+      <div class="how-title">How to use</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>Confirm the lab Mac is on</strong> and <code style="font-size:12px;background:#f5f3f0;padding:1px 5px;border-radius:3px;border:1px solid #ddd">./start.sh</code> is running in Terminal
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>Tap Launch Lab App above</strong> — the app opens in a new tab
+            <span class="note">If it doesn't load, you may not be on lab WiFi</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>Scan or enter</strong> the participant's SONA ID to print their label
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-text">
+            <strong>Collect the label</strong> from the participant at the end of the session
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <strong>Camera scanning</strong> works on the iPad and lab Mac only.<br>
+        On a phone, use <strong>Manual Entry</strong> or the <strong>USB scanner</strong> at the desktop.
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  Marshall Behavioral Research Lab ·
+  <a href="mailto:behaviorallab@marshall.usc.edu">behaviorallab@marshall.usc.edu</a> ·
+  <a href="https://github.com/usc-marshall-behavioral-lab/scan-to-print" target="_blank">GitHub</a>
+</footer>
+
+</body>
+</html>
