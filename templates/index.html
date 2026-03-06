@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MBRL Scan-to-Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cardinal: #990000;
+  --cardinal-dark: #6e0000;
+  --gold: #FFCC00;
+  --gold-dark: #d4a900;
+  --bg: #f4f2ef;
+  --white: #ffffff;
+  --ink: #1c1410;
+  --ink2: #4a3f35;
+  --muted: #9e9085;
+  --border: #ddd8d0;
+  --green: #2d7a47;
+  --serif: 'Libre Baskerville', Georgia, serif;
+  --sans: 'Inter', system-ui, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Topbar ────────────────────────────────── */
+.topbar {
+  background: var(--cardinal);
+  padding: 0 32px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+.topbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--gold);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  gap: 1px;
+}
+.brand-usc {
+  font-family: var(--serif);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.brand-lab {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+
+.topbar-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255,255,255,0.2);
+}
+
+.topbar-page {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.02em;
+}
+
+.topbar-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.status-pip {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.status-pip.ready  { background: #5cd68a; box-shadow: 0 0 6px rgba(92,214,138,0.5); }
+.status-pip.error  { background: #ff6b6b; }
+.status-pip.busy   { background: var(--gold); }
+.status-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  transition: color 0.2s;
+}
+.status-text.ready { color: #5cd68a; }
+.status-text.error { color: #ff9999; }
+.status-text.busy  { color: var(--gold); }
+
+/* ── Layout ────────────────────────────────── */
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Panel ─────────────────────────────────── */
+.panel {
+  background: var(--white);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
+}
+
+.panel-head {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.panel-head-accent {
+  width: 3px; height: 14px;
+  background: var(--cardinal);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.panel-head-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cardinal);
+}
+.panel-body { padding: 20px; }
+
+/* ── Camera ─────────────────────────────────── */
+.camera-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #111;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #222;
+}
+#camera-video {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+#camera-canvas { display: none; }
+
+.scan-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  background: rgba(0,0,0,0.15);
+}
+.qr-frame {
+  width: 48%; aspect-ratio: 1;
+  position: relative;
+}
+.qr-frame::before, .qr-frame::after,
+.qr-frame span::before, .qr-frame span::after {
+  content: ''; position: absolute;
+  width: 18px; height: 18px;
+  border-color: var(--gold); border-style: solid;
+  opacity: 0.9;
+}
+.qr-frame::before  { top: 0; left: 0;  border-width: 2.5px 0 0 2.5px; }
+.qr-frame::after   { top: 0; right: 0; border-width: 2.5px 2.5px 0 0; }
+.qr-frame span::before { bottom: 0; left: 0;  border-width: 0 0 2.5px 2.5px; }
+.qr-frame span::after  { bottom: 0; right: 0; border-width: 0 2.5px 2.5px 0; }
+.scan-sweep {
+  position: absolute; left: 5%; right: 5%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold) 40%, var(--gold) 60%, transparent);
+  animation: sweep 2s ease-in-out infinite;
+}
+@keyframes sweep {
+  0%   { top: 5%;  opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { top: 95%; opacity: 0; }
+}
+
+.camera-idle {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px;
+  background: #0e0a07;
+}
+.camera-idle-icon {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; opacity: 0.4;
+}
+.camera-idle p {
+  font-size: 12px; color: rgba(255,255,255,0.35);
+  text-align: center; line-height: 1.6;
+}
+
+.btn-camera {
+  margin-top: 14px;
+  width: 100%;
+  padding: 11px;
+  border-radius: 6px;
+  border: 1.5px solid var(--cardinal);
+  background: transparent;
+  color: var(--cardinal);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+.btn-camera:hover  { background: var(--cardinal); color: #fff; }
+.btn-camera.active { background: var(--cardinal); color: #fff; }
+
+/* ── ID Well ─────────────────────────────────── */
+.id-well {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 18px 14px;
+  margin-bottom: 20px;
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: background 0.3s;
+}
+.id-well-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.id-value {
+  font-family: var(--serif);
+  font-size: 46px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  letter-spacing: 0.03em;
+  transition: color 0.2s;
+}
+.id-value.empty   { color: var(--border); }
+.id-value.success { color: var(--cardinal); }
+.id-value.fail    { color: #b33; }
+
+@keyframes pop-gold {
+  0%   { background: rgba(255,204,0,0.2); }
+  100% { background: var(--bg); }
+}
+.id-well.flash { animation: pop-gold 0.5s ease-out forwards; }
+
+/* ── Manual entry ──────────────────────────── */
+.entry-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 7px;
+  display: block;
+}
+.entry-row { display: flex; gap: 8px; }
+.entry-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.05em;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+.entry-input:focus { border-color: var(--cardinal); background: var(--white); }
+.entry-input::placeholder { color: var(--border); }
+
+.btn-print {
+  padding: 10px 24px;
+  border-radius: 6px;
+  border: none;
+  background: var(--cardinal);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-appearance: none;
+  white-space: nowrap;
+}
+.btn-print:hover  { background: var(--cardinal-dark); }
+.btn-print:active { transform: scale(0.97); }
+.btn-print:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+.entry-hint {
+  margin-top: 7px;
+  font-size: 11.5px;
+  color: var(--muted);
+  min-height: 16px;
+  transition: color 0.2s;
+}
+.entry-hint.ok  { color: var(--green); }
+.entry-hint.err { color: #b33; }
+
+/* ── Stats row ──────────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+.stat-cell { background: var(--white); padding: 14px 18px; }
+.stat-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.stat-val {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+.stat-val.accent { color: var(--cardinal); }
+
+/* ── Printer line ───────────────────────────── */
+.printer-line {
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Mobile ─────────────────────────────────── */
+@media (max-width: 660px) {
+  .page { grid-template-columns: 1fr; padding: 16px 16px 48px; gap: 16px; }
+  .topbar { padding: 0 16px; }
+  .id-value { font-size: 38px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-usc">USC Marshall</span>
+    <span class="brand-lab">Behavioral Research Lab</span>
+  </div>
+  <div class="topbar-divider"></div>
+  <span class="topbar-page">Scan-to-Print</span>
+  <div class="topbar-status">
+    <div class="status-pip" id="s-pip"></div>
+    <span class="status-text" id="s-txt">Connecting…</span>
+  </div>
+</header>
+
+<!-- Page -->
+<div class="page">
+
+  <!-- Camera -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-accent"></div>
+      <span class="panel-head-label">Camera Scanner</span>
+    </div>
+    <div class="panel-body">
+      <div class="camera-box">
+        <video id="camera-video" playsinline autoplay muted></video>
+        <canvas id="camera-canvas"></canvas>
+        <div class="scan-overlay" id="scan-overlay" style="display:none">
+          <div class="qr-frame"><span></span><div class="scan-sweep"></div></div>
+        </div>
+        <div class="camera-idle" id="camera-idle">
+          <div class="camera-idle-icon">📷</div>
+          <p>Tap Start Camera<br>to scan with your device</p>
+        </div>
+      </div>
+      <button class="btn-camera" id="btn-cam" onclick="toggleCamera()">Start Camera</button>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-accent"></div>
+      <span class="panel-head-label">Participant ID</span>
+    </div>
+    <div class="panel-body">
+
+      <div class="id-well" id="id-well">
+        <div class="id-well-label">SONA ID</div>
+        <div class="id-value empty" id="id-val">——</div>
+      </div>
+
+      <label class="entry-label" for="m-input">Manual Entry</label>
+      <div class="entry-row">
+        <input class="entry-input" id="m-input" type="tel"
+          inputmode="numeric" pattern="[0-9]*"
+          placeholder="123456"
+          autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn-print" id="btn-print" onclick="manualPrint()">Print</button>
+      </div>
+      <div class="entry-hint" id="hint"></div>
+
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="stat-label">Last ID</div>
+          <div class="stat-val accent" id="stat-last">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label">Session Total</div>
+          <div class="stat-val" id="stat-count">0</div>
+        </div>
+      </div>
+
+      <div class="printer-line" id="printer-line">
+        <span>🖨</span>
+        <span id="printer-text">Detecting printer…</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+let printerReady = false, printerName = null;
+let sessionCount = 0, printing = false;
+let cameraActive = false, cameraStream = null, scanInterval = null;
+let lastScannedAt = 0;
+let scanBuf = '', scanTimer = null;
+
+// ── Status ────────────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const d = await (await fetch('/api/status')).json();
+    if (d.ok) {
+      printerReady = true; printerName = d.label;
+      setSt('ready', 'Ready');
+      document.getElementById('printer-text').textContent = `${d.label} · ${d.printer}`;
+    } else {
+      printerReady = false;
+      setSt('error', 'No printer');
+      document.getElementById('printer-text').textContent = 'Connect HP KE203 or Dymo LabelWriter';
+    }
+  } catch {
+    printerReady = false;
+    setSt('error', 'Server offline');
+    document.getElementById('printer-text').textContent = 'Run start.sh on the lab Mac';
+  }
+}
+function setSt(state, text) {
+  document.getElementById('s-pip').className = `status-pip ${state}`;
+  const t = document.getElementById('s-txt');
+  t.className = `status-text ${state}`;
+  t.textContent = text;
+}
+
+// ── Print ─────────────────────────────────────────────────────────────────
+async function printID(id) {
+  id = id.trim();
+  if (!id || printing) return;
+  if (!printerReady) { setHint('Printer not ready', 'err'); return; }
+
+  printing = true;
+  setIDVal(id, '');
+  setHint('Sending to printer…', '');
+  document.getElementById('btn-print').disabled = true;
+  setSt('busy', 'Printing…');
+
+  try {
+    const d = await (await fetch('/api/print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sona_id: id })
+    })).json();
+
+    if (d.ok) {
+      sessionCount++;
+      document.getElementById('stat-count').textContent = sessionCount;
+      document.getElementById('stat-last').textContent = id;
+      setIDVal(id, 'success');
+      setHint(`✓ Label printed · ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`, 'ok');
+      flashWell();
+      setSt('ready', 'Ready');
+    } else {
+      setIDVal(id, 'fail');
+      setHint(`✗ ${d.error || 'Print failed'}`, 'err');
+      setSt('ready', 'Ready');
+    }
+  } catch {
+    setIDVal(id, 'fail');
+    setHint('✗ Could not reach print server', 'err');
+    setSt('error', 'Server offline');
+  }
+
+  printing = false;
+  document.getElementById('btn-print').disabled = false;
+  document.getElementById('m-input').value = '';
+}
+
+function manualPrint() {
+  const v = document.getElementById('m-input').value.trim();
+  if (v) printID(v);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function setIDVal(v, state) {
+  const el = document.getElementById('id-val');
+  el.textContent = v || '——';
+  el.className = `id-value ${v ? state : 'empty'}`;
+}
+function setHint(msg, cls) {
+  const el = document.getElementById('hint');
+  el.textContent = msg; el.className = `entry-hint ${cls}`;
+}
+function flashWell() {
+  const el = document.getElementById('id-well');
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+
+// ── USB scanner ───────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (document.activeElement === document.getElementById('m-input')) return;
+  if (e.key === 'Enter') {
+    if (scanBuf.length >= 3) { const id = scanBuf.trim(); scanBuf = ''; clearTimeout(scanTimer); printID(id); }
+    return;
+  }
+  if (e.key.length === 1) {
+    scanBuf += e.key;
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(() => { scanBuf = ''; }, 200);
+  }
+});
+document.getElementById('m-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') manualPrint();
+});
+
+// ── Camera ────────────────────────────────────────────────────────────────
+async function toggleCamera() {
+  cameraActive ? stopCamera() : await startCamera();
+}
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 } }
+    });
+    const vid = document.getElementById('camera-video');
+    vid.srcObject = cameraStream; await vid.play();
+    document.getElementById('camera-idle').style.display = 'none';
+    document.getElementById('scan-overlay').style.display = 'flex';
+    document.getElementById('btn-cam').textContent = 'Stop Camera';
+    document.getElementById('btn-cam').classList.add('active');
+    cameraActive = true;
+    scanInterval = setInterval(scanFrame, 200);
+  } catch { setHint('Camera access denied', 'err'); }
+}
+function stopCamera() {
+  clearInterval(scanInterval);
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  document.getElementById('camera-video').srcObject = null;
+  document.getElementById('camera-idle').style.display = 'flex';
+  document.getElementById('scan-overlay').style.display = 'none';
+  document.getElementById('btn-cam').textContent = 'Start Camera';
+  document.getElementById('btn-cam').classList.remove('active');
+  cameraActive = false;
+}
+function scanFrame() {
+  const vid = document.getElementById('camera-video');
+  const cvs = document.getElementById('camera-canvas');
+  if (vid.readyState !== vid.HAVE_ENOUGH_DATA) return;
+  if (Date.now() - lastScannedAt < 2000) return;
+  cvs.width = vid.videoWidth; cvs.height = vid.videoHeight;
+  const ctx = cvs.getContext('2d');
+  ctx.drawImage(vid, 0, 0, cvs.width, cvs.height);
+  const img = ctx.getImageData(0, 0, cvs.width, cvs.height);
+  const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+  if (code?.data?.trim().length >= 3) {
+    lastScannedAt = Date.now();
+    const id = code.data.trim().replace(/\D/g, '');
+    if (id.length >= 3) printID(id);
+  }
+}
+
+checkStatus();
+setInterval(checkStatus, 15000);
+</script>
+</body>
+</html>
