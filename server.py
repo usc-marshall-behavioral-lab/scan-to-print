@@ -530,6 +530,33 @@ def status():
                     "sona": has_sona, "email": has_email})
 
 
+
+@app.route("/api/studies")
+def get_studies():
+    """Fetch active approved studies from SONA and return as JSON list."""
+    domain  = cfg("SONA_DOMAIN")
+    api_key = cfg("SONA_API_TOKEN")
+    if not domain or not api_key or api_key == "YOUR_SONA_API_TOKEN_HERE":
+        return jsonify({"ok": False, "error": "SONA not configured", "studies": []})
+    try:
+        import xml.etree.ElementTree as ET
+        xml_data = _sona_get("SonaGetStudyList", {"active": "1", "approved": "1"})
+        root = ET.fromstring(xml_data)
+        ns   = "http://schemas.datacontract.org/2004/07/emsdotnet.sonasystems"
+        studies = []
+        for study in root.iter(f"{{{ns}}}APIStudyInfo"):
+            exp_id = study.find(f"{{{ns}}}experiment_id")
+            name   = study.find(f"{{{ns}}}study_name")
+            if exp_id is not None and name is not None:
+                studies.append({
+                    "id":   exp_id.text.strip(),
+                    "name": name.text.strip() if name.text else "(unnamed)",
+                })
+        studies.sort(key=lambda s: s["name"].lower())
+        return jsonify({"ok": True, "studies": studies})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "studies": []})
+
 @app.route("/api/print", methods=["POST"])
 def print_label():
     data    = request.get_json()

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>MBRL Scan-to-Print</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -14,101 +14,95 @@
   --cardinal:      #990000;
   --cardinal-dark: #6e0000;
   --gold:          #FFCC00;
+  --green:         #2a7a45;
+  --green-dark:    #1d5c32;
+  --green-lite:    #edf7f1;
   --bg:            #f4f2ef;
   --white:         #ffffff;
   --ink:           #1c1410;
   --muted:         #9e9085;
   --border:        #ddd8d0;
-  --green:         #2d7a47;
   --serif:         'Libre Baskerville', Georgia, serif;
   --sans:          'Inter', system-ui, sans-serif;
+
+  /* mode-aware colours (overridden in checkout mode) */
+  --mode-color:    var(--cardinal);
+  --mode-dark:     var(--cardinal-dark);
+  --mode-lite:     #fff8f8;
 }
 
-html, body {
-  min-height: 100%;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--sans);
-  -webkit-font-smoothing: antialiased;
+body.checkout-mode {
+  --mode-color: var(--green);
+  --mode-dark:  var(--green-dark);
+  --mode-lite:  var(--green-lite);
 }
+
+html, body { min-height: 100%; background: var(--bg); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
 
 /* ── Topbar ── */
 .topbar {
   background: var(--cardinal);
-  padding: 0 24px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  padding: 0 24px; height: 56px;
+  display: flex; align-items: center; gap: 16px;
+  position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  transition: background 0.3s;
 }
+body.checkout-mode .topbar { background: var(--green); }
 .topbar::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--gold);
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px; background: var(--gold);
 }
 .brand { display: flex; flex-direction: column; line-height: 1.2; }
-.brand-usc {
-  font-family: var(--serif);
-  font-size: 9px; font-weight: 700;
-  color: var(--gold);
-  letter-spacing: 0.12em; text-transform: uppercase;
-}
-.brand-lab {
-  font-family: var(--serif);
-  font-size: 14px; font-weight: 700;
-  color: #fff;
-}
+.brand-usc { font-family: var(--serif); font-size: 9px; font-weight: 700; color: var(--gold); letter-spacing: 0.12em; text-transform: uppercase; }
+.brand-lab { font-family: var(--serif); font-size: 14px; font-weight: 700; color: #fff; }
 .topbar-div { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
 .topbar-page { font-size: 12px; color: rgba(255,255,255,0.6); }
 .topbar-status { margin-left: auto; display: flex; align-items: center; gap: 6px; }
-.s-pip {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: rgba(255,255,255,0.25); flex-shrink: 0; transition: all 0.3s;
-}
+.s-pip { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.25); flex-shrink: 0; transition: all 0.3s; }
 .s-pip.ready { background: #5cd68a; box-shadow: 0 0 5px rgba(92,214,138,0.5); }
 .s-pip.error { background: #ff6b6b; }
 .s-pip.busy  { background: var(--gold); }
 .s-txt { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.55); transition: color 0.2s; }
-.s-txt.ready { color: #5cd68a; }
-.s-txt.error { color: #ff9999; }
-.s-txt.busy  { color: var(--gold); }
+.s-txt.ready { color: #5cd68a; } .s-txt.error { color: #ff9999; } .s-txt.busy { color: var(--gold); }
+
+/* ── Mode toggle ── */
+.mode-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 24px;
+}
+.mode-tab {
+  padding: 12px 20px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; cursor: pointer;
+  border-bottom: 3px solid transparent;
+  color: var(--muted); transition: all 0.15s;
+  background: none; border-top: none; border-left: none; border-right: none;
+  font-family: var(--sans);
+}
+.mode-tab:hover { color: var(--ink); }
+.mode-tab.active-checkin  { color: var(--cardinal); border-bottom-color: var(--cardinal); }
+.mode-tab.active-checkout { color: var(--green);    border-bottom-color: var(--green); }
 
 /* ── Page ── */
 .page {
-  max-width: 960px;
-  margin: 0 auto;
+  max-width: 960px; margin: 0 auto;
   padding: 24px 20px 60px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  align-items: start;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 20px; align-items: start;
 }
 
 /* ── Panel ── */
 .panel {
-  background: var(--white);
-  border-radius: 8px;
-  overflow: hidden;
+  background: var(--white); border-radius: 8px; overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
   border: 1px solid var(--border);
 }
-.panel-head {
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 10px;
-}
-.panel-accent { width: 3px; height: 13px; background: var(--cardinal); border-radius: 2px; flex-shrink: 0; }
-.panel-label {
-  font-size: 10px; font-weight: 600;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--cardinal);
-}
+.panel-head { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.panel-accent { width: 3px; height: 13px; border-radius: 2px; flex-shrink: 0; background: var(--mode-color); transition: background 0.3s; }
+.panel-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mode-color); transition: color 0.3s; }
 .panel-body { padding: 18px; }
 
 /* ── Camera ── */
@@ -118,20 +112,14 @@ html, body {
 }
 #camera-video { width: 100%; height: 100%; object-fit: cover; display: block; }
 #camera-canvas { display: none; }
-
-.scan-overlay {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  pointer-events: none; background: rgba(0,0,0,0.15);
-}
+.scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; background: rgba(0,0,0,0.15); }
 .qr-frame { width: 48%; aspect-ratio: 1; position: relative; }
-.qr-frame::before, .qr-frame::after,
-.qr-frame span::before, .qr-frame span::after {
+.qr-frame::before, .qr-frame::after, .qr-frame span::before, .qr-frame span::after {
   content: ''; position: absolute; width: 18px; height: 18px;
   border-color: var(--gold); border-style: solid; opacity: 0.9;
 }
-.qr-frame::before  { top: 0; left: 0;  border-width: 2.5px 0 0 2.5px; }
-.qr-frame::after   { top: 0; right: 0; border-width: 2.5px 2.5px 0 0; }
+.qr-frame::before  { top: 0; left: 0;   border-width: 2.5px 0 0 2.5px; }
+.qr-frame::after   { top: 0; right: 0;  border-width: 2.5px 2.5px 0 0; }
 .qr-frame span::before { bottom: 0; left: 0;  border-width: 0 0 2.5px 2.5px; }
 .qr-frame span::after  { bottom: 0; right: 0; border-width: 0 2.5px 2.5px 0; }
 .scan-sweep {
@@ -139,137 +127,92 @@ html, body {
   background: linear-gradient(90deg, transparent, var(--gold) 40%, var(--gold) 60%, transparent);
   animation: sweep 2s ease-in-out infinite;
 }
-@keyframes sweep {
-  0%   { top: 5%; opacity: 0; } 8% { opacity: 1; }
-  92%  { opacity: 1; } 100% { top: 95%; opacity: 0; }
-}
-.camera-idle {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 10px; background: #0e0a07;
-}
-.camera-idle-icon {
-  width: 48px; height: 48px; border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,0.12);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; opacity: 0.4;
-}
+@keyframes sweep { 0% { top: 5%; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { top: 95%; opacity: 0; } }
+.camera-idle { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #0e0a07; }
+.camera-idle-icon { width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 20px; opacity: 0.4; }
 .camera-idle p { font-size: 12px; color: rgba(255,255,255,0.32); text-align: center; line-height: 1.6; }
-
-/* HTTPS warning (only shown on non-localhost over HTTP) */
-.camera-https-note {
-  display: none;
-  background: #fff8e6;
-  border: 1px solid #f0c040;
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin-top: 12px;
-  font-size: 11.5px;
-  color: #5a4500;
-  line-height: 1.5;
-}
-.camera-https-note strong { color: var(--cardinal); }
-
-.btn-camera {
-  margin-top: 12px; width: 100%; padding: 11px;
-  border-radius: 6px; border: 1.5px solid var(--cardinal);
-  background: transparent; color: var(--cardinal);
-  font-family: var(--sans); font-size: 13px; font-weight: 600;
-  cursor: pointer; transition: all 0.15s;
-}
-.btn-camera:hover, .btn-camera.active { background: var(--cardinal); color: #fff; }
+.camera-https-note { display: none; background: #fff8e6; border: 1px solid #f0c040; border-radius: 6px; padding: 10px 14px; margin-top: 12px; font-size: 11.5px; color: #5a4500; line-height: 1.5; }
+.btn-camera { margin-top: 12px; width: 100%; padding: 11px; border-radius: 6px; border: 1.5px solid var(--mode-color); background: transparent; color: var(--mode-color); font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.btn-camera:hover, .btn-camera.active { background: var(--mode-color); color: #fff; }
 
 /* ── ID Well ── */
 .id-well {
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: 6px; padding: 14px 16px 12px;
-  margin-bottom: 18px; min-height: 80px;
-  display: flex; flex-direction: column; justify-content: center;
-  transition: background 0.3s;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px 16px 12px; margin-bottom: 18px; min-height: 80px;
+  display: flex; flex-direction: column; justify-content: center; transition: background 0.3s;
 }
-.id-well-label {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
-}
-.id-value {
-  font-family: var(--serif); font-size: 44px; font-weight: 700;
-  line-height: 1; color: var(--ink); letter-spacing: 0.03em; transition: color 0.2s;
-}
+.id-well-label { font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.id-value { font-family: var(--serif); font-size: 44px; font-weight: 700; line-height: 1; color: var(--ink); letter-spacing: 0.03em; transition: color 0.2s; }
 .id-value.empty   { color: var(--border); }
-.id-value.success { color: var(--cardinal); }
+.id-value.success { color: var(--mode-color); }
 .id-value.fail    { color: #b33; }
-@keyframes pop-gold {
-  0% { background: rgba(255,204,0,0.2); } 100% { background: var(--bg); }
-}
+@keyframes pop-gold { 0% { background: rgba(255,204,0,0.2); } 100% { background: var(--bg); } }
 .id-well.flash { animation: pop-gold 0.5s ease-out forwards; }
+@keyframes pop-green { 0% { background: rgba(42,122,69,0.15); } 100% { background: var(--bg); } }
+.id-well.flash-green { animation: pop-green 0.5s ease-out forwards; }
 
 /* ── Entry ── */
-.entry-label {
-  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 7px; display: block;
-}
+.entry-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; display: block; }
 .entry-row { display: flex; gap: 8px; }
-.entry-input {
-  flex: 1; background: var(--bg); border: 1.5px solid var(--border);
-  border-radius: 6px; padding: 10px 14px;
-  font-family: var(--serif); font-size: 22px; font-weight: 700;
-  color: var(--ink); letter-spacing: 0.05em; outline: none;
-  transition: border-color 0.15s; -webkit-appearance: none;
-}
-.entry-input:focus { border-color: var(--cardinal); background: var(--white); }
+.entry-input { flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 6px; padding: 10px 14px; font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: 0.05em; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
+.entry-input:focus { border-color: var(--mode-color); background: var(--white); }
 .entry-input::placeholder { color: var(--border); }
 
-.btn-print {
-  padding: 10px 22px; border-radius: 6px; border: none;
-  background: var(--cardinal); color: #fff;
-  font-family: var(--sans); font-size: 13px; font-weight: 600;
-  cursor: pointer; transition: background 0.15s, transform 0.1s;
-  -webkit-appearance: none; white-space: nowrap;
-}
-.btn-print:hover  { background: var(--cardinal-dark); }
-.btn-print:active { transform: scale(0.97); }
-.btn-print:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+.btn-action { padding: 10px 22px; border-radius: 6px; border: none; background: var(--mode-color); color: #fff; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; -webkit-appearance: none; white-space: nowrap; }
+.btn-action:hover { background: var(--mode-dark); }
+.btn-action:active { transform: scale(0.97); }
+.btn-action:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
 
-.entry-hint {
-  margin-top: 7px; font-size: 11px; color: var(--muted); min-height: 16px; transition: color 0.2s;
-}
+.entry-hint { margin-top: 7px; font-size: 11px; color: var(--muted); min-height: 16px; transition: color 0.2s; }
 .entry-hint.ok  { color: var(--green); }
 .entry-hint.err { color: #b33; }
 
-/* ── Stats ── */
-.stats-row {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 1px; background: var(--border);
-  border: 1px solid var(--border); border-radius: 6px;
-  overflow: hidden; margin-top: 18px;
-}
-.stat-cell { background: var(--white); padding: 12px 16px; }
-.stat-label {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 3px;
-}
-.stat-val { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1; }
-.stat-val.accent { color: var(--cardinal); }
+/* ── Checkout extra fields ── */
+.checkout-fields { display: none; margin-bottom: 14px; }
+body.checkout-mode .checkout-fields { display: block; }
+.field-group { margin-bottom: 10px; }
+.field-input { width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 6px; padding: 9px 12px; font-family: var(--sans); font-size: 14px; color: var(--ink); outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
+.field-input:focus { border-color: var(--green); background: var(--white); }
+.field-input::placeholder { color: var(--muted); font-size: 13px; }
 
-.printer-line { margin-top: 12px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+/* ── Stats ── */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 18px; }
+.stat-cell { background: var(--white); padding: 12px 16px; }
+.stat-label { font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.stat-val { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1; }
+.stat-val.accent { color: var(--mode-color); transition: color 0.3s; }
+
+/* ── Integration status pills ── */
+.integration-row { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.int-pill { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 10px; letter-spacing: 0.04em; }
+.int-pill.on  { background: #e8f5ee; color: var(--green); border: 1px solid #b8dfc8; }
+.int-pill.off { background: #f5f3f0; color: var(--muted); border: 1px solid var(--border); }
+
+.printer-line { margin-top: 10px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+/* ── Checkout result box ── */
+.checkout-result { display: none; margin-top: 14px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+.checkout-result.visible { display: block; }
+.cr-head { padding: 10px 14px; font-size: 12px; font-weight: 700; }
+.cr-head.ok  { background: var(--green-lite); color: var(--green); }
+.cr-head.err { background: #fef2f2; color: #b33; }
+.cr-steps { padding: 10px 14px; background: var(--white); }
+.cr-step { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink); padding: 3px 0; }
+.cr-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.cr-dot.ok  { background: var(--green); }
+.cr-dot.warn { background: #f59e0b; }
+.cr-dot.err { background: #ef4444; }
 
 /* ── Mobile ── */
 @media (max-width: 660px) {
-  .page {
-    grid-template-columns: 1fr;
-    padding: 16px 14px 48px;
-    gap: 14px;
-    /* Put controls first on mobile */
-    direction: rtl;
-  }
+  .page { grid-template-columns: 1fr; padding: 16px 14px 48px; gap: 14px; direction: rtl; }
   .page > * { direction: ltr; }
-  .topbar { padding: 0 14px; height: 52px; }
+  .topbar, .mode-bar { padding: 0 14px; }
+  .topbar { height: 52px; }
   .brand-lab { font-size: 13px; }
-  .id-value { font-size: 40px; }
-
-  /* Shrink camera box on mobile since it won't be used there */
+  .id-value { font-size: 38px; }
   .camera-box { aspect-ratio: 16/9; }
+  .mode-tab { padding: 10px 14px; font-size: 11px; }
 }
 </style>
 </head>
@@ -281,12 +224,18 @@ html, body {
     <span class="brand-lab">Behavioral Research Lab</span>
   </div>
   <div class="topbar-div"></div>
-  <span class="topbar-page">Scan-to-Print</span>
+  <span class="topbar-page" id="topbar-page">Check-In</span>
   <div class="topbar-status">
     <div class="s-pip" id="s-pip"></div>
     <span class="s-txt" id="s-txt">Connecting…</span>
   </div>
 </header>
+
+<!-- Mode toggle -->
+<nav class="mode-bar">
+  <button class="mode-tab active-checkin" id="tab-checkin"  onclick="setMode('checkin')">⬆ Check-In</button>
+  <button class="mode-tab"                id="tab-checkout" onclick="setMode('checkout')">⬇ Check-Out</button>
+</nav>
 
 <div class="page">
 
@@ -294,7 +243,7 @@ html, body {
   <div class="panel">
     <div class="panel-head">
       <div class="panel-accent"></div>
-      <span class="panel-label">Camera Scanner</span>
+      <span class="panel-label" id="camera-panel-label">Camera Scanner</span>
     </div>
     <div class="panel-body">
       <div class="camera-box">
@@ -310,7 +259,7 @@ html, body {
       </div>
       <div class="camera-https-note" id="https-note">
         <strong>Camera unavailable on this device.</strong><br>
-        Camera scanning requires the iPad or lab Mac (localhost). Use manual entry below, or the USB scanner on the desktop.
+        Camera scanning requires the iPad or lab Mac. Use manual entry or the USB scanner.
       </div>
       <button class="btn-camera" id="btn-cam" onclick="toggleCamera()">Start Camera</button>
     </div>
@@ -320,23 +269,45 @@ html, body {
   <div class="panel">
     <div class="panel-head">
       <div class="panel-accent"></div>
-      <span class="panel-label">Participant ID</span>
+      <span class="panel-label" id="controls-panel-label">Participant ID</span>
     </div>
     <div class="panel-body">
 
       <div class="id-well" id="id-well">
-        <div class="id-well-label">SONA ID</div>
+        <div class="id-well-label" id="id-well-label">SONA ID</div>
         <div class="id-value empty" id="id-val">——</div>
       </div>
 
-      <label class="entry-label" for="m-input">Manual Entry</label>
+      <!-- Checkout extra fields -->
+      <div class="checkout-fields">
+        <div class="field-group">
+          <label class="entry-label" for="f-experiment">Experiment Name</label>
+          <input class="field-input" id="f-experiment" type="text" placeholder="e.g. Decision Making Study" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="entry-label" for="f-expid">SONA Experiment ID <span style="font-weight:400;text-transform:none;letter-spacing:0">(for auto-credit)</span></label>
+          <input class="field-input" id="f-expid" type="tel" inputmode="numeric" placeholder="e.g. 4521" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="entry-label" for="f-ra">RA Email</label>
+          <input class="field-input" id="f-ra" type="email" placeholder="ra@usc.edu" autocomplete="off">
+        </div>
+      </div>
+
+      <label class="entry-label" for="m-input" id="entry-label">Manual Entry</label>
       <div class="entry-row">
         <input class="entry-input" id="m-input" type="tel"
           inputmode="numeric" pattern="[0-9]*" placeholder="123456"
           autocomplete="off" autocorrect="off" spellcheck="false">
-        <button class="btn-print" id="btn-print" onclick="manualPrint()">Print</button>
+        <button class="btn-action" id="btn-action" onclick="handleAction()">Print</button>
       </div>
       <div class="entry-hint" id="hint"></div>
+
+      <!-- Checkout result -->
+      <div class="checkout-result" id="checkout-result">
+        <div class="cr-head" id="cr-head"></div>
+        <div class="cr-steps" id="cr-steps"></div>
+      </div>
 
       <div class="stats-row">
         <div class="stat-cell">
@@ -344,10 +315,12 @@ html, body {
           <div class="stat-val accent" id="stat-last">—</div>
         </div>
         <div class="stat-cell">
-          <div class="stat-label">Session Total</div>
+          <div class="stat-label" id="stat-label">Labels Printed</div>
           <div class="stat-val" id="stat-count">0</div>
         </div>
       </div>
+
+      <div class="integration-row" id="integration-row"></div>
 
       <div class="printer-line">
         <span>🖨</span>
@@ -360,21 +333,51 @@ html, body {
 </div>
 
 <script>
-let printerReady = false, sessionCount = 0, printing = false;
+let printerReady = false, sessionCount = 0, busy = false;
 let cameraActive = false, cameraStream = null, scanInterval = null;
 let lastScannedAt = 0, scanBuf = '', scanTimer = null;
+let currentMode = 'checkin';
+let sonaEnabled = false, emailEnabled = false;
 
-// ── Detect if camera will work (requires localhost or HTTPS) ──────────────
+// ── HTTPS check ───────────────────────────────────────────────────────────
 const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 if (!isSecure) {
   document.getElementById('https-note').style.display = 'block';
   document.getElementById('btn-cam').style.display = 'none';
 }
 
+// ── Mode toggle ───────────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  const isOut = mode === 'checkout';
+
+  document.body.classList.toggle('checkout-mode', isOut);
+  document.getElementById('topbar-page').textContent    = isOut ? 'Check-Out' : 'Check-In';
+  document.getElementById('tab-checkin').className      = 'mode-tab' + (isOut ? '' : ' active-checkin');
+  document.getElementById('tab-checkout').className     = 'mode-tab' + (isOut ? ' active-checkout' : '');
+  document.getElementById('camera-panel-label').textContent  = isOut ? 'Scan Returned Label' : 'Camera Scanner';
+  document.getElementById('controls-panel-label').textContent = isOut ? 'Check-Out' : 'Participant ID';
+  document.getElementById('id-well-label').textContent  = 'SONA ID';
+  document.getElementById('btn-action').textContent     = isOut ? 'Check Out' : 'Print';
+  document.getElementById('entry-label').textContent    = 'Manual Entry';
+  document.getElementById('stat-label').textContent     = isOut ? 'Checked Out' : 'Labels Printed';
+
+  setIDVal('', '');
+  setHint('', '');
+  document.getElementById('checkout-result').classList.remove('visible');
+
+  // Reset count per mode switch
+  sessionCount = 0;
+  document.getElementById('stat-count').textContent = '0';
+}
+
 // ── Status ────────────────────────────────────────────────────────────────
 async function checkStatus() {
   try {
     const d = await (await fetch('/api/status')).json();
+    sonaEnabled  = d.sona  || false;
+    emailEnabled = d.email || false;
+
     if (d.ok) {
       printerReady = true;
       setSt('ready', 'Ready');
@@ -384,34 +387,51 @@ async function checkStatus() {
       setSt('error', 'No printer');
       document.getElementById('printer-text').textContent = 'Connect HP KE203 or Dymo LabelWriter';
     }
+    renderIntegrations();
   } catch {
     printerReady = false;
     setSt('error', 'Server offline');
     document.getElementById('printer-text').textContent = 'Run start.sh on the lab Mac';
   }
 }
+
+function renderIntegrations() {
+  const row = document.getElementById('integration-row');
+  row.innerHTML = `
+    <span class="int-pill ${sonaEnabled  ? 'on' : 'off'}">${sonaEnabled  ? '✓' : '○'} SONA</span>
+    <span class="int-pill ${emailEnabled ? 'on' : 'off'}">${emailEnabled ? '✓' : '○'} Email</span>
+    <span class="int-pill on">✓ CSV Log</span>
+  `;
+}
+
 function setSt(state, text) {
   document.getElementById('s-pip').className = `s-pip ${state}`;
   const t = document.getElementById('s-txt');
   t.className = `s-txt ${state}`; t.textContent = text;
 }
 
-// ── Print ─────────────────────────────────────────────────────────────────
-async function printID(id) {
+// ── Main action handler ───────────────────────────────────────────────────
+function handleAction() {
+  const id = document.getElementById('m-input').value.trim();
+  if (id) {
+    currentMode === 'checkout' ? doCheckout(id) : doPrint(id);
+  }
+}
+
+// ── Check-In (print label) ────────────────────────────────────────────────
+async function doPrint(id) {
   id = id.trim();
-  if (!id || printing) return;
+  if (!id || busy) return;
   if (!printerReady) { setHint('Printer not ready', 'err'); return; }
 
-  printing = true;
-  setIDVal(id, '');
-  setHint('Sending to printer…', '');
-  document.getElementById('btn-print').disabled = true;
+  busy = true;
+  setIDVal(id, ''); setHint('Sending to printer…', '');
+  document.getElementById('btn-action').disabled = true;
   setSt('busy', 'Printing…');
 
   try {
     const d = await (await fetch('/api/print', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sona_id: id })
     })).json();
 
@@ -421,7 +441,7 @@ async function printID(id) {
       document.getElementById('stat-last').textContent = id;
       setIDVal(id, 'success');
       setHint(`✓ Label printed · ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`, 'ok');
-      flashWell();
+      flashWell(false);
       setSt('ready', 'Ready');
     } else {
       setIDVal(id, 'fail');
@@ -429,19 +449,81 @@ async function printID(id) {
       setSt('ready', 'Ready');
     }
   } catch {
-    setIDVal(id, 'fail');
-    setHint('✗ Could not reach print server', 'err');
-    setSt('error', 'Server offline');
+    setIDVal(id, 'fail'); setHint('✗ Could not reach print server', 'err'); setSt('error', 'Server offline');
   }
-
-  printing = false;
-  document.getElementById('btn-print').disabled = false;
+  busy = false;
+  document.getElementById('btn-action').disabled = false;
   document.getElementById('m-input').value = '';
 }
 
-function manualPrint() {
-  const v = document.getElementById('m-input').value.trim();
-  if (v) printID(v);
+// ── Check-Out ─────────────────────────────────────────────────────────────
+async function doCheckout(id) {
+  id = id.trim();
+  if (!id || busy) return;
+
+  busy = true;
+  setIDVal(id, ''); setHint('Processing checkout…', '');
+  document.getElementById('btn-action').disabled = true;
+  document.getElementById('checkout-result').classList.remove('visible');
+  setSt('busy', 'Checking out…');
+
+  const payload = {
+    sona_id:    id,
+    experiment: document.getElementById('f-experiment').value.trim(),
+    exp_id:     document.getElementById('f-expid').value.trim(),
+    ra_email:   document.getElementById('f-ra').value.trim(),
+  };
+
+  try {
+    const d = await (await fetch('/api/checkout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })).json();
+
+    if (d.ok) {
+      sessionCount++;
+      document.getElementById('stat-count').textContent = sessionCount;
+      document.getElementById('stat-last').textContent = id;
+      setIDVal(id, 'success');
+      setHint('', '');
+      flashWell(true);
+      setSt('ready', 'Ready');
+      showCheckoutResult(d);
+    } else {
+      setIDVal(id, 'fail'); setHint(`✗ ${d.error || 'Checkout failed'}`, 'err');
+      setSt('ready', 'Ready');
+    }
+  } catch {
+    setIDVal(id, 'fail'); setHint('✗ Could not reach server', 'err'); setSt('error', 'Server offline');
+  }
+  busy = false;
+  document.getElementById('btn-action').disabled = false;
+  document.getElementById('m-input').value = '';
+}
+
+function showCheckoutResult(d) {
+  const el  = document.getElementById('checkout-result');
+  const hd  = document.getElementById('cr-head');
+  const st  = document.getElementById('cr-steps');
+
+  hd.textContent = `✓  Checked out: ${d.sona_id}`;
+  hd.className   = 'cr-head ok';
+
+  const steps = d.steps || {};
+  const rows = [
+    { label: 'CSV log',       val: steps.csv     },
+    { label: 'SONA credit',   val: steps.sona    },
+    { label: 'Email',         val: steps.email   },
+    { label: 'Receipt',       val: steps.receipt },
+  ];
+  st.innerHTML = rows.map(r => {
+    const ok   = r.val && (r.val.includes('log') || r.val.includes('rant') || r.val.includes('ent') || r.val.includes('rinted'));
+    const warn = r.val && (r.val.includes('config') || r.val.includes('not config') || r.val.includes('No '));
+    const dot  = ok ? 'ok' : warn ? 'warn' : 'err';
+    return `<div class="cr-step"><div class="cr-dot ${dot}"></div><span><strong>${r.label}:</strong> ${r.val || '—'}</span></div>`;
+  }).join('');
+
+  el.classList.add('visible');
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -452,16 +534,22 @@ function setIDVal(v, state) {
 function setHint(msg, cls) {
   const el = document.getElementById('hint'); el.textContent = msg; el.className = `entry-hint ${cls}`;
 }
-function flashWell() {
+function flashWell(green) {
   const el = document.getElementById('id-well');
-  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  el.classList.remove('flash', 'flash-green');
+  void el.offsetWidth;
+  el.classList.add(green ? 'flash-green' : 'flash');
 }
 
 // ── USB scanner ───────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (document.activeElement === document.getElementById('m-input')) return;
+  if (['m-input','f-experiment','f-expid','f-ra'].includes(document.activeElement?.id)) return;
   if (e.key === 'Enter') {
-    if (scanBuf.length >= 3) { const id = scanBuf.trim(); scanBuf = ''; clearTimeout(scanTimer); printID(id); }
+    if (scanBuf.length >= 3) {
+      const id = scanBuf.trim().replace(/\D/g, '');
+      scanBuf = ''; clearTimeout(scanTimer);
+      if (id.length >= 3) currentMode === 'checkout' ? doCheckout(id) : doPrint(id);
+    }
     return;
   }
   if (e.key.length === 1) {
@@ -471,18 +559,14 @@ document.addEventListener('keydown', e => {
   }
 });
 document.getElementById('m-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') manualPrint();
+  if (e.key === 'Enter') handleAction();
 });
 
 // ── Camera ────────────────────────────────────────────────────────────────
-async function toggleCamera() {
-  cameraActive ? stopCamera() : await startCamera();
-}
+async function toggleCamera() { cameraActive ? stopCamera() : await startCamera(); }
 async function startCamera() {
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 } }
-    });
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
     const vid = document.getElementById('camera-video');
     vid.srcObject = cameraStream; await vid.play();
     document.getElementById('camera-idle').style.display = 'none';
@@ -491,7 +575,7 @@ async function startCamera() {
     document.getElementById('btn-cam').classList.add('active');
     cameraActive = true;
     scanInterval = setInterval(scanFrame, 200);
-  } catch { setHint('Camera access denied — check browser permissions', 'err'); }
+  } catch { setHint('Camera access denied', 'err'); }
 }
 function stopCamera() {
   clearInterval(scanInterval);
@@ -516,7 +600,9 @@ function scanFrame() {
   if (code?.data?.trim().length >= 3) {
     lastScannedAt = Date.now();
     const id = code.data.trim().replace(/\D/g, '');
-    if (id.length >= 3) printID(id);
+    if (id.length >= 3) {
+      currentMode === 'checkout' ? doCheckout(id) : doPrint(id);
+    }
   }
 }
 
