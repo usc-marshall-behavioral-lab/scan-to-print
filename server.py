@@ -1,3 +1,4 @@
+HP_KEYWORDS = ["ke203", "hp", "direct thermal"]
 #!/usr/bin/env python3
 """
 MBRL Scan-to-Print — Local Print Server
@@ -21,7 +22,7 @@ import qrcode
 app = Flask(__name__)
 CORS(app)
 
-HP_KEYWORDS   = ["ke203", "hp", "direct thermal"]
+HP_KEYWORDS   = ["ke203", "direct thermal"]
 DYMO_KEYWORDS = ["dymo", "labelwriter"]
 
 
