@@ -181,20 +181,26 @@ def make_hp_label(sona_id, timestamp):
 
 
 def make_dymo_label(sona_id, timestamp):
-    """3.5x1.125 Dymo label with QR code."""
+    """3.5x1.125 Dymo label. PDF defined as portrait (1.125 x 3.5) with
+    content rotated 90 deg CCW so CUPS prints correctly without orientation flags."""
     path = tempfile.mktemp(suffix=".pdf")
-    w, h = 3.5 * inch, 1.125 * inch
-    c = rl_canvas.Canvas(path, pagesize=(w, h))
+    PW, PH = 1.125 * inch, 3.5 * inch
+    c = rl_canvas.Canvas(path, pagesize=(PW, PH))
+
+    # Rotate canvas so drawing space becomes W=3.5", H=1.125"
+    c.translate(0, PH)
+    c.rotate(-90)
+    W, H = 3.5 * inch, 1.125 * inch
 
     c.setFillColor(colors.white)
-    c.rect(0, 0, w, h, fill=1, stroke=0)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
     c.setFillColorRGB(0.6, 0.0, 0.0)
-    c.rect(0, 0, 0.07 * inch, h, fill=1, stroke=0)
+    c.rect(0, 0, 0.07 * inch, H, fill=1, stroke=0)
     c.setFillColorRGB(0.50, 0.45, 0.40)
     c.setFont("Helvetica", 6)
-    c.drawString(0.16 * inch, h - 0.18 * inch, "MBRL  \u00b7  PARTICIPANT ID")
+    c.drawString(0.16 * inch, H - 0.18 * inch, "MBRL  ·  PARTICIPANT ID")
 
-    avail_w = w * 0.55
+    avail_w = W * 0.55
     for fs in range(34, 14, -2):
         c.setFont("Helvetica-Bold", fs)
         if c.stringWidth(sona_id, "Helvetica-Bold", fs) <= avail_w:
@@ -204,7 +210,7 @@ def make_dymo_label(sona_id, timestamp):
 
     qr_size = 0.85 * inch
     c.drawImage(make_qr(sona_id),
-                w - qr_size - 0.06 * inch, (h - qr_size) / 2,
+                W - qr_size - 0.06 * inch, (H - qr_size) / 2,
                 width=qr_size, height=qr_size, preserveAspectRatio=True)
     c.setFillColorRGB(0.65, 0.60, 0.55)
     c.setFont("Helvetica", 5)
@@ -213,14 +219,16 @@ def make_dymo_label(sona_id, timestamp):
     c.save()
     return path
 
-
 def make_checkout_receipt(sona_id, experiment, timestamp, ptype):
     """Checkout receipt — same size as check-in label."""
     path = tempfile.mktemp(suffix=".pdf")
 
     if ptype == "dymo":
+        PW, PH = 1.125 * inch, 3.5 * inch
+        c = rl_canvas.Canvas(path, pagesize=(PW, PH))
+        c.translate(0, PH)
+        c.rotate(-90)
         w, h = 3.5 * inch, 1.125 * inch
-        c = rl_canvas.Canvas(path, pagesize=(w, h))
         c.setFillColor(colors.white)
         c.rect(0, 0, w, h, fill=1, stroke=0)
         c.setFillColorRGB(0.17, 0.48, 0.27)
