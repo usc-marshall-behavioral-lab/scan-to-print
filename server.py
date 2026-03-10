@@ -539,7 +539,7 @@ def print_label():
 
     try:
         if ptype == "dymo":
-            cmd = ["lp", "-d", name, "-o", "orientation-requested=4", pdf_path]
+            cmd = ["lp", "-d", name, pdf_path]
         else:
             cmd = ["lp", "-d", name, "-o", "media=4x6",
                    "-o", "orientation-requested=4", pdf_path]
@@ -589,7 +589,7 @@ def checkout():
         pdf_path = make_checkout_receipt(sona_id, experiment, ts, ptype)
         try:
             if ptype == "dymo":
-                cmd = ["lp", "-d", name, "-o", "orientation-requested=4", pdf_path]
+                cmd = ["lp", "-d", name, pdf_path]
             else:
                 cmd = ["lp", "-d", name, "-o", "media=4x6",
                        "-o", "orientation-requested=4", pdf_path]
