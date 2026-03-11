@@ -58,6 +58,7 @@ body.checkout-mode .topbar { background: var(--green); }
 .brand-lab { font-family: var(--serif); font-size: 14px; font-weight: 700; color: #fff; }
 .topbar-div { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
 .topbar-page { font-size: 12px; color: rgba(255,255,255,0.6); }
+.topbar-date { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 500; letter-spacing: 0.03em; }
 .topbar-status { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .s-pip { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.25); flex-shrink: 0; transition: all 0.3s; }
 .s-pip.ready { background: #5cd68a; box-shadow: 0 0 5px rgba(92,214,138,0.5); }
@@ -168,6 +169,83 @@ body.checkout-mode .topbar { background: var(--green); }
 .entry-hint.err  { color: #b33; }
 .entry-hint.warn { color: #b87300; }
 
+/* ── Timeslot picker ── */
+.timeslot-row { display:none; margin-bottom:14px; }
+.timeslot-row.visible { display:block; }
+.timeslot-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.headcount-pill { font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px;
+  background:#f0f0f0; color:#666; }
+.headcount-pill.all-in { background:#edf7f1; color:var(--green); }
+.headcount-pill.some-in { background:#fffbeb; color:#b87300; }
+
+/* ── Study lock ── */
+.study-lock-bar { display:none; font-size:11px; color:var(--muted); margin-top:4px;
+  display:flex; align-items:center; gap:6px; }
+.study-lock-bar.locked { display:flex; }
+.unlock-btn { font-size:11px; color:var(--cardinal); cursor:pointer; text-decoration:underline; margin-left:auto; }
+
+/* ── Roster panel ── */
+.roster-panel { background:var(--white); border-radius:8px; overflow:hidden;
+  grid-column: 1 / -1; margin-top:0; }
+.roster-head { display:flex; align-items:center; gap:10px; padding:10px 16px;
+  border-bottom:1px solid var(--border); }
+.roster-head .panel-label { font-size:11px; font-weight:700; letter-spacing:0.07em;
+  text-transform:uppercase; color:var(--muted); }
+.roster-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.roster-btn { font-size:11px; font-weight:600; padding:4px 10px; border-radius:4px;
+  cursor:pointer; border:1px solid var(--border); background:var(--white); color:var(--ink);
+  font-family:var(--sans); }
+.roster-btn:hover { background:#f5f5f5; }
+.roster-btn.export { border-color:#bbd6ff; background:#f0f6ff; color:#2060cc; }
+.queue-badge { font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px;
+  background:#fff3cd; color:#856404; border:1px solid #ffc107; display:none; }
+.queue-badge.visible { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+.roster-table { width:100%; border-collapse:collapse; font-size:12px; }
+.roster-table th { padding:7px 14px; text-align:left; font-size:10px; font-weight:700;
+  letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);
+  border-bottom:1px solid var(--border); background:#fafaf9; }
+.roster-table td { padding:8px 14px; border-bottom:1px solid #f0ede8; color:var(--ink); }
+.roster-table tr:last-child td { border-bottom:none; }
+.roster-table tr:hover td { background:#fafaf9; }
+.rt-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px;
+  font-weight:700; letter-spacing:0.04em; text-transform:uppercase; }
+.rt-badge.in  { background:#edf7f1; color:var(--green); }
+.rt-badge.out { background:#fff3f3; color:#b33; }
+.roster-empty { padding:24px; text-align:center; color:var(--muted); font-size:12px; }
+
+/* ── Queue indicator ── */
+.queue-retry-btn { font-size:11px; color:#856404; text-decoration:underline; cursor:pointer; }
+
+/* ── Participant info card ── */
+.pax-card {
+  display: none;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fafaf9;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.pax-card.visible { display: block; }
+.pax-card-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  background: var(--mode-color);
+  color: white;
+  font-size: 12px; font-weight: 600;
+}
+.pax-card-head .pax-id { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.pax-card-head .pax-name { opacity: 0.85; font-size: 12px; }
+.pax-card-head .pax-spinner { margin-left: auto; font-size: 12px; opacity: 0.7; }
+.pax-card-body { padding: 10px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.pax-field { font-size: 12px; }
+.pax-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 1px; }
+.pax-val { color: var(--ink); }
+.pax-val.credit-granted  { color: var(--green); font-weight: 600; }
+.pax-val.credit-pending  { color: #b87300; font-weight: 600; }
+.pax-val.credit-ns       { color: var(--muted); }
+.pax-val.not-found       { color: #b33; font-style: italic; }
+
 .verify-bar { display:none; margin-bottom:12px; border-radius:6px; padding:9px 14px; font-size:12px; font-weight:500; line-height:1.4; }
 .verify-bar.showing  { display:flex; align-items:center; gap:8px; }
 .verify-bar.ok   { background:#edf7f1; color:var(--green); border:1px solid #b8dfc8; }
@@ -234,6 +312,8 @@ body.checkout-mode .checkout-fields { display: block; }
   </div>
   <div class="topbar-div"></div>
   <span class="topbar-page" id="topbar-page">Check-In</span>
+  <div class="topbar-date" id="topbar-date"></div>
+  <a href="/docs" target="_blank" style="font-size:11px;color:rgba(255,255,255,0.5);text-decoration:none;font-weight:500;margin-left:8px;">Docs</a>
   <div class="topbar-status">
     <div class="s-pip" id="s-pip"></div>
     <span class="s-txt" id="s-txt">Connecting…</span>
@@ -288,19 +368,56 @@ body.checkout-mode .checkout-fields { display: block; }
       </div>
 
       <!-- Study dropdown — always visible -->
-      <div class="field-group" style="margin-bottom:14px">
+      <div class="field-group" style="margin-bottom:6px">
         <label class="entry-label" for="f-study">Study</label>
         <select class="field-input" id="f-study" onchange="onStudySelect()">
           <option value="">Loading studies…</option>
         </select>
       </div>
+      <div class="study-lock-bar" id="study-lock-bar">
+        <span>🔒 Study locked</span>
+        <span class="unlock-btn" onclick="unlockStudy()">Change</span>
+      </div>
 
-      <!-- Checkout-only fields -->
-      <div class="checkout-fields">
-        <div class="field-group">
+      <!-- Timeslot picker -->
+      <div class="timeslot-row" id="timeslot-row" style="margin-bottom:14px">
+        <div class="timeslot-head">
+          <label class="entry-label" style="margin:0">Today's Timeslot</label>
+          <span class="headcount-pill" id="headcount-pill"></span>
+        </div>
+        <select class="field-input" id="f-timeslot" onchange="onTimeslotSelect()">
+          <option value="">Loading timeslots…</option>
+        </select>
+      </div>
+
+      <!-- RA info — always visible -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="field-group" style="margin:0">
+          <label class="entry-label" for="f-ra-name">RA Name</label>
+          <input class="field-input" id="f-ra-name" type="text" placeholder="First Last" autocomplete="off">
+        </div>
+        <div class="field-group" style="margin:0">
           <label class="entry-label" for="f-ra">RA Email</label>
           <input class="field-input" id="f-ra" type="email" placeholder="ra@usc.edu" autocomplete="off">
         </div>
+      </div>
+
+      <!-- Checkout-only fields -->
+      <div class="checkout-fields">
+        <div class="field-group" id="f-participant-email-group" style="display:none">
+          <label class="entry-label">Participant Email</label>
+          <div class="field-input" id="f-participant-email" style="background:#f5f5f5; color:#444; cursor:default; font-size:13px; display:flex; align-items:center;">—</div>
+        </div>
+      </div>
+
+      <!-- Participant info card -->
+      <div class="pax-card" id="pax-card">
+        <div class="pax-card-head">
+          <span class="pax-id" id="pax-card-id"></span>
+          <span class="pax-name" id="pax-card-name"></span>
+          <span class="pax-spinner" id="pax-card-spinner">Looking up…</span>
+        </div>
+        <div class="pax-card-body" id="pax-card-body"></div>
       </div>
 
       <!-- Verify bar (check-in only) -->
@@ -348,8 +465,29 @@ body.checkout-mode .checkout-fields { display: block; }
 
 </div>
 
+<!-- ── Roster panel ────────────────────────────────────────────── -->
+<div class="page" style="padding-top:0; padding-bottom:20px;">
+  <div class="roster-panel">
+    <div class="roster-head">
+      <div class="panel-accent" style="width:4px;height:20px;border-radius:2px;background:var(--mode-color);margin-right:6px;flex-shrink:0"></div>
+      <span class="panel-label">Session Roster</span>
+      <span id="queue-badge" class="queue-badge" onclick="retryQueue()" title="Click to retry">
+        <span id="queue-count">0</span> credit(s) queued — retry
+      </span>
+      <div class="roster-actions">
+        <button class="roster-btn export" onclick="exportLog('checkout')">↓ Checkout Log</button>
+        <button class="roster-btn export" onclick="exportLog('checkin')" style="border-color:#d4bbff;background:#f5f0ff;color:#5b2da6">↓ Check-In Log</button>
+        <button class="roster-btn" onclick="clearRoster()">Clear</button>
+      </div>
+    </div>
+    <div id="roster-body">
+      <div class="roster-empty">No participants yet this session</div>
+    </div>
+  </div>
+</div>
+
 <script>
-let printerReady = false, sessionCount = 0, busy = false;
+let printerReady = false, checkinCount = 0, checkoutCount = 0, busy = false;
 let cameraActive = false, cameraStream = null, scanInterval = null;
 let lastScannedAt = 0, scanBuf = '', scanTimer = null;
 let currentMode = 'checkin';
@@ -382,8 +520,187 @@ async function loadStudies() {
   }
 }
 
+// ── Audio feedback ───────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function getAudio() { if (!audioCtx) audioCtx = new AudioCtx(); return audioCtx; }
+
+function playTone(type) {
+  try {
+    const ctx = getAudio();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    if (type === 'success') {
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(); osc.stop(ctx.currentTime + 0.25);
+    } else if (type === 'error') {
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.setValueAtTime(220, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(); osc.stop(ctx.currentTime + 0.35);
+    } else if (type === 'warn') {
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    }
+  } catch {}
+}
+
+// ── Study lock ────────────────────────────────────────────────────────────
+let studyLocked = false;
+
+function lockStudy() {
+  studyLocked = true;
+  document.getElementById('f-study').disabled = true;
+  document.getElementById('study-lock-bar').classList.add('locked');
+}
+
+function unlockStudy() {
+  studyLocked = false;
+  document.getElementById('f-study').disabled = false;
+  document.getElementById('study-lock-bar').classList.remove('locked');
+}
+
+// ── Timeslots ─────────────────────────────────────────────────────────────
+let currentTimeslotCount = 0;
+
+async function loadTimeslots(expId) {
+  const row = document.getElementById('timeslot-row');
+  const sel = document.getElementById('f-timeslot');
+  const pill = document.getElementById('headcount-pill');
+  if (!expId) { row.classList.remove('visible'); return; }
+
+  row.classList.add('visible');
+  sel.innerHTML = '<option value="">Loading timeslots…</option>';
+  pill.textContent = '';
+
+  try {
+    const d = await (await fetch(`/api/timeslots?exp_id=${expId}`)).json();
+    if (d.ok && d.timeslots.length) {
+      sel.innerHTML = '<option value="">— Select timeslot —</option>' +
+        d.timeslots.map(t => `<option value="${t.id}" data-count="${t.count}">${t.time} (${t.count} signed up)</option>`).join('');
+      // Auto-select if only one timeslot
+      if (d.timeslots.length === 1) {
+        sel.selectedIndex = 1;
+        onTimeslotSelect();
+      }
+    } else {
+      sel.innerHTML = '<option value="">No timeslots today</option>';
+      pill.textContent = 'No slots today';
+    }
+  } catch {
+    sel.innerHTML = '<option value="">Could not load</option>';
+  }
+}
+
+function onTimeslotSelect() {
+  const sel = document.getElementById('f-timeslot');
+  const opt = sel.options[sel.selectedIndex];
+  const pill = document.getElementById('headcount-pill');
+  if (opt && opt.dataset.count) {
+    currentTimeslotCount = parseInt(opt.dataset.count) || 0;
+    pill.textContent = `0 / ${currentTimeslotCount} checked in`;
+    pill.className = 'headcount-pill';
+    updateHeadcount();
+  } else {
+    pill.textContent = '';
+    currentTimeslotCount = 0;
+  }
+}
+
+function updateHeadcount() {
+  const pill = document.getElementById('headcount-pill');
+  if (!currentTimeslotCount) return;
+  const n = checkinCount;
+  pill.textContent = `${n} / ${currentTimeslotCount} checked in`;
+  pill.className = 'headcount-pill ' + (n >= currentTimeslotCount ? 'all-in' : 'some-in');
+}
+
 function onStudySelect() {
-  // nothing extra needed — value/name read at checkout time
+  const sel = document.getElementById('f-study');
+  const expId = sel.value;
+  loadTimeslots(expId);
+  // Hide timeslot if no study
+  if (!expId) {
+    document.getElementById('timeslot-row').classList.remove('visible');
+  }
+}
+
+// ── Roster ────────────────────────────────────────────────────────────────
+async function refreshRoster() {
+  try {
+    const d = await (await fetch('/api/roster')).json();
+    renderRoster(d.roster || []);
+  } catch {}
+}
+
+function renderRoster(roster) {
+  const body = document.getElementById('roster-body');
+  if (!roster.length) {
+    body.innerHTML = '<div class="roster-empty">No participants yet this session</div>';
+    return;
+  }
+  const rows = roster.map(r => `
+    <tr>
+      <td><strong>${r.sona_id}</strong></td>
+      <td><span class="rt-badge ${r.type === 'checkin' ? 'in' : 'out'}">${r.type === 'checkin' ? 'In' : 'Out'}</span></td>
+      <td>${r.ts}</td>
+      <td style="color:var(--muted)">${r.experiment || '—'}</td>
+      <td style="color:var(--muted)">${r.ra || '—'}</td>
+      <td style="color:var(--muted)">${r.email || '—'}</td>
+    </tr>`).join('');
+  body.innerHTML = `<table class="roster-table">
+    <thead><tr>
+      <th>SONA ID</th><th>Status</th><th>Time</th><th>Study</th><th>RA</th><th>Participant Email</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function clearRoster() {
+  if (!confirm('Clear the session roster?')) return;
+  await fetch('/api/roster/clear', { method: 'POST' });
+  checkinCount = 0; checkoutCount = 0;
+  currentTimeslotCount = 0;
+  document.getElementById('stat-count').textContent = '0';
+  document.getElementById('stat-last').textContent = '—';
+  document.getElementById('headcount-pill').textContent = '';
+  renderRoster([]);
+  unlockStudy();
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+function exportLog(type='checkout') {
+  window.open(`/api/export?type=${type}`, '_blank');
+}
+
+// ── Offline queue ─────────────────────────────────────────────────────────
+async function checkQueue() {
+  try {
+    const d = await (await fetch('/api/queue')).json();
+    const badge = document.getElementById('queue-badge');
+    const cnt   = document.getElementById('queue-count');
+    if (d.count > 0) {
+      cnt.textContent = d.count;
+      badge.classList.add('visible');
+    } else {
+      badge.classList.remove('visible');
+    }
+  } catch {}
+}
+
+async function retryQueue() {
+  const d = await (await fetch('/api/queue/process', { method: 'POST' })).json();
+  checkQueue();
+  if (d.processed > 0) {
+    alert(`Granted ${d.processed} queued credit(s). ${d.remaining} remaining.`);
+  }
 }
 
 // ── Mode toggle ───────────────────────────────────────────────────────────
@@ -404,10 +721,11 @@ function setMode(mode) {
 
   setIDVal('', '');
   setHint('', '');
+  hidePaxCard();
   document.getElementById('checkout-result').classList.remove('visible');
 
-  sessionCount = 0;
-  document.getElementById('stat-count').textContent = '0';
+  document.getElementById('stat-count').textContent = isOut ? checkoutCount : checkinCount;
+  if (!isOut) setParticipantEmail('');
 
   if (isOut && !studiesLoaded) loadStudies();
 }
@@ -486,6 +804,13 @@ async function doPrint(id) {
   if (!printerReady) { setHint('Printer not ready', 'err'); return; }
 
   pendingPrintId = id;
+
+  // Show participant card immediately, load info in background
+  if (sonaEnabled) {
+    showPaxCard(id);
+    loadParticipantInfo(id);
+  }
+
   const sel2 = document.getElementById('f-study');
   const expId = sel2.value;
 
@@ -525,7 +850,7 @@ async function doPrint(id) {
   }
 }
 
-async function executePrint(id) {
+async function executePrint(id, force=false) {
   if (!id || busy) return;
   busy = true;
   setIDVal(id, ''); setHint('Sending to printer…', '');
@@ -541,20 +866,42 @@ async function executePrint(id) {
         sona_id:    id,
         experiment: selOpt2 && selOpt2.dataset.name ? selOpt2.dataset.name : '',
         exp_id:     sel2.value || '',
+        ra_name:    document.getElementById('f-ra-name').value.trim(),
+        ra_email:   document.getElementById('f-ra').value.trim(),
+        force:      force,
       })
     })).json();
 
     if (d.ok) {
-      sessionCount++;
-      document.getElementById('stat-count').textContent = sessionCount;
+      checkinCount++;
+      document.getElementById('stat-count').textContent = checkinCount;
       document.getElementById('stat-last').textContent = id;
       setIDVal(id, 'success');
       setHint(`✓ Label printed · ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`, 'ok');
       flashWell(false);
       setSt('ready', 'Ready');
+      playTone('success');
+      updateHeadcount();
+      refreshRoster();
+      if (!studyLocked) lockStudy();
+    } else if (d.duplicate) {
+      setIDVal(id, 'fail');
+      setHint(`⚠ Already checked in this session`, 'warn');
+      playTone('warn');
+      setSt('ready', 'Ready');
+      setVerifyBar('warn', `Participant ${id} already checked in — print again?`, true);
+      pendingPrintId = id;
+      // Set force flag on override
+      document.getElementById('vb-override').onclick = () => {
+        setVerifyBar(null);
+        executePrint(id, true);
+      };
+      document.getElementById('m-input').value = '';
+      return;
     } else {
       setIDVal(id, 'fail');
       setHint(`✗ ${d.error || 'Print failed'}`, 'err');
+      playTone('error');
       setSt('ready', 'Ready');
     }
   } catch {
@@ -567,6 +914,88 @@ async function executePrint(id) {
 }
 
 // ── Check-Out ─────────────────────────────────────────────────────────────
+function setParticipantEmail(email) {
+  const grp = document.getElementById('f-participant-email-group');
+  const el  = document.getElementById('f-participant-email');
+  if (email) {
+    el.textContent = email;
+    grp.style.display = '';
+  } else {
+    el.textContent = '—';
+    grp.style.display = 'none';
+  }
+}
+
+// ── Participant info card ─────────────────────────────────────────────────
+function showPaxCard(sonaId) {
+  const card    = document.getElementById('pax-card');
+  const cardId  = document.getElementById('pax-card-id');
+  const cardName= document.getElementById('pax-card-name');
+  const spinner = document.getElementById('pax-card-spinner');
+  const body    = document.getElementById('pax-card-body');
+
+  card.classList.add('visible');
+  cardId.textContent  = sonaId;
+  cardName.textContent = '';
+  spinner.textContent = 'Looking up…';
+  body.innerHTML = '';
+}
+
+function hidePaxCard() {
+  document.getElementById('pax-card').classList.remove('visible');
+}
+
+async function loadParticipantInfo(sonaId) {
+  const sel    = document.getElementById('f-study');
+  const expId  = sel.value || '';
+  const spinner = document.getElementById('pax-card-spinner');
+  const body    = document.getElementById('pax-card-body');
+  const cardName= document.getElementById('pax-card-name');
+
+  try {
+    const d = await (await fetch('/api/participant', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sona_id: sonaId, exp_id: expId })
+    })).json();
+
+    spinner.textContent = '';
+
+    if (d.ok) {
+      // Name in header
+      const fullName = [d.first_name, d.last_name].filter(Boolean).join(' ');
+      cardName.textContent = fullName ? `· ${fullName}` : '';
+
+      // Credit status class
+      const cs = (d.credit_status || '').toLowerCase();
+      const creditClass = cs.includes('grant') ? 'credit-granted'
+                        : cs.includes('pend')  ? 'credit-pending'
+                        : 'credit-ns';
+
+      const fields = [
+        { label: 'Email',          val: d.email         || '—',   cls: '' },
+        { label: 'Credit Status',  val: d.credit_status || '—',   cls: creditClass },
+        { label: 'Course',         val: d.course_name   || '—',   cls: '' },
+        { label: 'Section',        val: d.section_name  || '—',   cls: '' },
+        { label: 'Credits',        val: d.credits       || '—',   cls: '' },
+        { label: 'Signup ID',      val: d.signup_id     || '—',   cls: '' },
+      ].filter(f => f.val !== '—' || ['Email','Credit Status'].includes(f.label));
+
+      body.innerHTML = fields.map(f => `
+        <div class="pax-field">
+          <div class="pax-label">${f.label}</div>
+          <div class="pax-val ${f.cls}">${f.val}</div>
+        </div>`).join('');
+    } else {
+      body.innerHTML = `<div class="pax-field" style="grid-column:1/-1">
+        <div class="pax-val not-found">${d.msg || 'No SONA record found'}</div>
+      </div>`;
+    }
+  } catch {
+    spinner.textContent = '';
+    body.innerHTML = '<div class="pax-field" style="grid-column:1/-1"><div class="pax-val not-found">Lookup failed</div></div>';
+  }
+}
+
 async function doCheckout(id) {
   id = id.trim();
   if (!id || busy) return;
@@ -577,13 +1006,37 @@ async function doCheckout(id) {
   document.getElementById('checkout-result').classList.remove('visible');
   setSt('busy', 'Checking out…');
 
+  // Show participant card immediately
+  if (sonaEnabled) {
+    showPaxCard(id);
+    loadParticipantInfo(id);
+  }
+
   const sel = document.getElementById('f-study');
   const selOpt = sel.options[sel.selectedIndex];
+  const expId = sel.value || '';
+
+  // Look up participant email from SONA if study is selected
+  if (expId && sonaEnabled) {
+    try {
+      const v = await (await fetch('/api/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sona_id: id, exp_id: expId })
+      })).json();
+      setParticipantEmail(v.email || '');
+    } catch { setParticipantEmail(''); }
+  } else {
+    setParticipantEmail('');
+  }
+
+  const pEmail = document.getElementById('f-participant-email').textContent;
   const payload = {
-    sona_id:    id,
-    experiment: selOpt && selOpt.dataset.name ? selOpt.dataset.name : '',
-    exp_id:     sel.value || '',
-    ra_email:   document.getElementById('f-ra').value.trim(),
+    sona_id:           id,
+    experiment:        selOpt && selOpt.dataset.name ? selOpt.dataset.name : '',
+    exp_id:            expId,
+    ra_name:           document.getElementById('f-ra-name').value.trim(),
+    ra_email:          document.getElementById('f-ra').value.trim(),
+    participant_email: (pEmail && pEmail !== '—') ? pEmail : '',
   };
 
   try {
@@ -593,17 +1046,20 @@ async function doCheckout(id) {
     })).json();
 
     if (d.ok) {
-      sessionCount++;
-      document.getElementById('stat-count').textContent = sessionCount;
+      checkoutCount++;
+      document.getElementById('stat-count').textContent = checkoutCount;
       document.getElementById('stat-last').textContent = id;
       setIDVal(id, 'success');
       setHint('', '');
       flashWell(true);
       setSt('ready', 'Ready');
+      playTone('success');
       showCheckoutResult(d);
+      refreshRoster();
+      checkQueue();
     } else {
       setIDVal(id, 'fail'); setHint(`✗ ${d.error || 'Checkout failed'}`, 'err');
-      setSt('ready', 'Ready');
+      playTone('error'); setSt('ready', 'Ready');
     }
   } catch {
     setIDVal(id, 'fail'); setHint('✗ Could not reach server', 'err'); setSt('error', 'Server offline');
@@ -628,9 +1084,13 @@ function showCheckoutResult(d) {
     { label: 'Email',         val: steps.email   },
     { label: 'Receipt',       val: steps.receipt },
   ];
+  // Show queue note if credit was queued
+  if (steps.sona && steps.sona.includes('queue')) {
+    checkQueue();
+  }
   st.innerHTML = rows.map(r => {
-    const ok   = r.val && (r.val.includes('log') || r.val.includes('rant') || r.val.includes('ent') || r.val.includes('rinted'));
-    const warn = r.val && (r.val.includes('config') || r.val.includes('not config') || r.val.includes('No '));
+    const ok   = r.val && (r.val.includes('log') || r.val.includes('rant') || r.val.includes('ent') || r.val.includes('rinted') || r.val.includes('rue'));
+    const warn = r.val && (r.val.includes('config') || r.val.includes('not config') || r.val.includes('No ') || r.val.includes('queue'));
     const dot  = ok ? 'ok' : warn ? 'warn' : 'err';
     return `<div class="cr-step"><div class="cr-dot ${dot}"></div><span><strong>${r.label}:</strong> ${r.val || '—'}</span></div>`;
   }).join('');
@@ -655,7 +1115,18 @@ function flashWell(green) {
 
 // ── USB scanner ───────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (['m-input','f-experiment','f-expid','f-ra'].includes(document.activeElement?.id)) return;
+  // Escape clears input and resets state
+  if (e.key === 'Escape') {
+    document.getElementById('m-input').value = '';
+    setIDVal('', '');
+    setHint('', '');
+    setVerifyBar(null);
+    setParticipantEmail('');
+    hidePaxCard();
+    document.getElementById('m-input').focus();
+    return;
+  }
+  if (['m-input','f-ra','f-ra-name'].includes(document.activeElement?.id)) return;
   if (e.key === 'Enter') {
     if (scanBuf.length >= 3) {
       const id = scanBuf.trim().replace(/\D/g, '');
@@ -720,7 +1191,20 @@ function scanFrame() {
 
 checkStatus();
 setInterval(checkStatus, 15000);
+setInterval(refreshRoster, 10000);
+setInterval(checkQueue, 30000);
 loadStudies();
+refreshRoster();
+checkQueue();
+
+function updateClock() {
+  const now = new Date();
+  const date = now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  const time = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('topbar-date').textContent = date + '  ·  ' + time;
+}
+updateClock();
+setInterval(updateClock, 1000);
 </script>
 </body>
 </html>

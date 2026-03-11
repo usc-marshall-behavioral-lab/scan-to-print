@@ -14,6 +14,8 @@ import tempfile
 import urllib.request
 import urllib.parse
 import ssl
+import ssl
+import ssl
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -574,41 +576,28 @@ def get_studies():
 
 @app.route("/api/verify", methods=["POST"])
 def verify_signup():
-    data    = request.get_json()
-    sona_id = (data.get("sona_id") or "").strip()
-    exp_id  = (data.get("exp_id")  or "").strip()
-    if not sona_id or not exp_id:
-        return jsonify({"ok": False, "error": "Missing params"})
-    domain  = cfg("SONA_DOMAIN")
-    api_key = cfg("SONA_API_TOKEN")
-    if not domain or not api_key or api_key == "YOUR_SONA_API_TOKEN_HERE":
-        return jsonify({"ok": None, "msg": "SONA not configured"})
-    try:
-        signup_id, err = _sona_find_signup_id(sona_id, exp_id)
-        if signup_id:
-            return jsonify({"ok": True, "signup_id": signup_id, "msg": f"Confirmed — signup {signup_id} found"})
-        return jsonify({"ok": False, "msg": err or "No signup found"})
-    except Exception as e:
-        return jsonify({"ok": None, "msg": str(e)})
+    """Check if a participant has a signup for the given experiment."""
+    data        = request.get_json()
+    sona_id     = (data.get("sona_id")  or "").strip()
+    exp_id      = (data.get("exp_id")   or "").strip()
 
-@app.route("/api/verify", methods=["POST"])
-def verify_signup():
-    data    = request.get_json()
-    sona_id = (data.get("sona_id") or "").strip()
-    exp_id  = (data.get("exp_id")  or "").strip()
     if not sona_id or not exp_id:
-        return jsonify({"ok": False, "error": "Missing params"})
+        return jsonify({"ok": False, "error": "Missing sona_id or exp_id"})
+
     domain  = cfg("SONA_DOMAIN")
     api_key = cfg("SONA_API_TOKEN")
     if not domain or not api_key or api_key == "YOUR_SONA_API_TOKEN_HERE":
-        return jsonify({"ok": None, "msg": "SONA not configured"})
+        return jsonify({"ok": None, "msg": "SONA not configured — skipping verification"})
+
     try:
         signup_id, err = _sona_find_signup_id(sona_id, exp_id)
         if signup_id:
-            return jsonify({"ok": True, "signup_id": signup_id, "msg": f"Confirmed — signup {signup_id} found"})
-        return jsonify({"ok": False, "msg": err or "No signup found"})
+            return jsonify({"ok": True, "signup_id": signup_id,
+                            "msg": f"Confirmed — signup {signup_id} found"})
+        else:
+            return jsonify({"ok": False, "msg": err or "No signup found"})
     except Exception as e:
-        return jsonify({"ok": None, "msg": str(e)})
+        return jsonify({"ok": None, "msg": f"Verification error: {e}"})
 
 @app.route("/api/print", methods=["POST"])
 def print_label():
