@@ -164,8 +164,17 @@ body.checkout-mode .topbar { background: var(--green); }
 .btn-action:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
 
 .entry-hint { margin-top: 7px; font-size: 11px; color: var(--muted); min-height: 16px; transition: color 0.2s; }
-.entry-hint.ok  { color: var(--green); }
-.entry-hint.err { color: #b33; }
+.entry-hint.ok   { color: var(--green); }
+.entry-hint.err  { color: #b33; }
+.entry-hint.warn { color: #b87300; }
+
+.verify-bar { display:none; margin-bottom:12px; border-radius:6px; padding:9px 14px; font-size:12px; font-weight:500; line-height:1.4; }
+.verify-bar.showing  { display:flex; align-items:center; gap:8px; }
+.verify-bar.ok   { background:#edf7f1; color:var(--green); border:1px solid #b8dfc8; }
+.verify-bar.err  { background:#fef2f2; color:#b33; border:1px solid #f5c0c0; }
+.verify-bar.warn { background:#fffbeb; color:#b87300; border:1px solid #fcd34d; }
+.verify-bar .vb-icon { font-size:14px; flex-shrink:0; }
+.vb-override { margin-left:auto; font-size:11px; cursor:pointer; text-decoration:underline; opacity:0.7; white-space:nowrap; }
 
 /* ── Checkout extra fields ── */
 .checkout-fields { display: none; margin-bottom: 14px; }
@@ -292,6 +301,13 @@ body.checkout-mode .checkout-fields { display: block; }
           <label class="entry-label" for="f-ra">RA Email</label>
           <input class="field-input" id="f-ra" type="email" placeholder="ra@usc.edu" autocomplete="off">
         </div>
+      </div>
+
+      <!-- Verify bar (check-in only) -->
+      <div class="verify-bar" id="verify-bar">
+        <span class="vb-icon" id="vb-icon"></span>
+        <span id="vb-msg"></span>
+        <span class="vb-override" id="vb-override" onclick="overridePrint()" style="display:none">Print anyway</span>
       </div>
 
       <label class="entry-label" for="m-input" id="entry-label">Manual Entry</label>
@@ -444,11 +460,73 @@ function handleAction() {
 }
 
 // ── Check-In (print label) ────────────────────────────────────────────────
+let pendingPrintId = null;
+
+function overridePrint() {
+  if (pendingPrintId) {
+    setVerifyBar(null);
+    executePrint(pendingPrintId);
+  }
+}
+
+function setVerifyBar(state, msg, showOverride) {
+  const bar = document.getElementById('verify-bar');
+  const icon = document.getElementById('vb-icon');
+  const msgEl = document.getElementById('vb-msg');
+  const ovr = document.getElementById('vb-override');
+  bar.className = 'verify-bar' + (state ? ' showing ' + state : '');
+  icon.textContent = state === 'ok' ? '✓' : state === 'err' ? '⚠' : state === 'warn' ? '⚠' : '';
+  msgEl.textContent = msg || '';
+  ovr.style.display = showOverride ? 'inline' : 'none';
+}
+
 async function doPrint(id) {
   id = id.trim();
   if (!id || busy) return;
   if (!printerReady) { setHint('Printer not ready', 'err'); return; }
 
+  pendingPrintId = id;
+  const sel2 = document.getElementById('f-study');
+  const expId = sel2.value;
+
+  // Verify signup if study is selected
+  if (expId && sonaEnabled) {
+    setIDVal(id, '');
+    setVerifyBar('warn', 'Checking SONA…');
+    setHint('', '');
+    try {
+      const v = await (await fetch('/api/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sona_id: id, exp_id: expId })
+      })).json();
+
+      if (v.ok === true) {
+        setVerifyBar('ok', v.msg || 'Signup confirmed');
+        executePrint(id);
+      } else if (v.ok === null) {
+        // Can't verify — proceed silently
+        setVerifyBar(null);
+        executePrint(id);
+      } else {
+        // Not found — warn and allow override
+        setVerifyBar('err', v.msg || 'No signup found for this study', true);
+        setIDVal(id, 'fail');
+        setHint('Participant not found in SONA for selected study', 'warn');
+        document.getElementById('m-input').value = '';
+        return;
+      }
+    } catch {
+      setVerifyBar(null);
+      executePrint(id);
+    }
+  } else {
+    setVerifyBar(null);
+    executePrint(id);
+  }
+}
+
+async function executePrint(id) {
+  if (!id || busy) return;
   busy = true;
   setIDVal(id, ''); setHint('Sending to printer…', '');
   document.getElementById('btn-action').disabled = true;
@@ -485,6 +563,7 @@ async function doPrint(id) {
   busy = false;
   document.getElementById('btn-action').disabled = false;
   document.getElementById('m-input').value = '';
+  pendingPrintId = null;
 }
 
 // ── Check-Out ─────────────────────────────────────────────────────────────
