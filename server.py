@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import urllib.request
 import urllib.parse
+import ssl
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -383,7 +384,10 @@ def _sona_get(path, params):
     params["api_key"] = api_key
     url = f"https://{domain}.sona-systems.com/services/SonaAPI.svc/{path}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"User-Agent": SONA_USER_AGENT})
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
         return resp.read().decode()
 
 
@@ -551,7 +555,7 @@ def get_studies():
         return jsonify({"ok": False, "error": "SONA not configured", "studies": []})
     try:
         import xml.etree.ElementTree as ET
-        xml_data = _sona_get("SonaGetStudyList", {"active": "1", "approved": "1"})
+        xml_data = _sona_get("SonaGetStudyList", {"active": "1", "approved": "1", "web_flag": "0", "survey_flag": "0"})
         root = ET.fromstring(xml_data)
         ns   = "http://schemas.datacontract.org/2004/07/emsdotnet.sonasystems"
         studies = []
@@ -567,6 +571,44 @@ def get_studies():
         return jsonify({"ok": True, "studies": studies})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e), "studies": []})
+
+@app.route("/api/verify", methods=["POST"])
+def verify_signup():
+    data    = request.get_json()
+    sona_id = (data.get("sona_id") or "").strip()
+    exp_id  = (data.get("exp_id")  or "").strip()
+    if not sona_id or not exp_id:
+        return jsonify({"ok": False, "error": "Missing params"})
+    domain  = cfg("SONA_DOMAIN")
+    api_key = cfg("SONA_API_TOKEN")
+    if not domain or not api_key or api_key == "YOUR_SONA_API_TOKEN_HERE":
+        return jsonify({"ok": None, "msg": "SONA not configured"})
+    try:
+        signup_id, err = _sona_find_signup_id(sona_id, exp_id)
+        if signup_id:
+            return jsonify({"ok": True, "signup_id": signup_id, "msg": f"Confirmed — signup {signup_id} found"})
+        return jsonify({"ok": False, "msg": err or "No signup found"})
+    except Exception as e:
+        return jsonify({"ok": None, "msg": str(e)})
+
+@app.route("/api/verify", methods=["POST"])
+def verify_signup():
+    data    = request.get_json()
+    sona_id = (data.get("sona_id") or "").strip()
+    exp_id  = (data.get("exp_id")  or "").strip()
+    if not sona_id or not exp_id:
+        return jsonify({"ok": False, "error": "Missing params"})
+    domain  = cfg("SONA_DOMAIN")
+    api_key = cfg("SONA_API_TOKEN")
+    if not domain or not api_key or api_key == "YOUR_SONA_API_TOKEN_HERE":
+        return jsonify({"ok": None, "msg": "SONA not configured"})
+    try:
+        signup_id, err = _sona_find_signup_id(sona_id, exp_id)
+        if signup_id:
+            return jsonify({"ok": True, "signup_id": signup_id, "msg": f"Confirmed — signup {signup_id} found"})
+        return jsonify({"ok": False, "msg": err or "No signup found"})
+    except Exception as e:
+        return jsonify({"ok": None, "msg": str(e)})
 
 @app.route("/api/print", methods=["POST"])
 def print_label():
