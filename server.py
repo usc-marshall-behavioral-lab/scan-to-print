@@ -684,6 +684,29 @@ def checkout():
     return jsonify(result)
 
 
+@app.route("/api/debug/signup")
+def debug_signup():
+    import xml.etree.ElementTree as ET
+    ns = "http://schemas.datacontract.org/2004/07/emsdotnet.sonasystems"
+    exp_id = request.args.get("exp_id", "")
+    if not exp_id:
+        return jsonify({"error": "Pass ?exp_id=XXXX"})
+    try:
+        xml_ts = _sona_get("SonaGetTimeslotsByExperimentID", {"experiment_id": exp_id, "fill_status": "S"})
+        ts_root = ET.fromstring(xml_ts)
+        tids = [t.text.strip() for t in ts_root.iter(f"{{{ns}}}timeslot_id") if t.text]
+        if not tids:
+            return jsonify({"error": "No timeslots with signups"})
+        xml_su = _sona_get("SonaGetSignUpsForTimeslot", {"timeslot_id": tids[0]})
+        su_root = ET.fromstring(xml_su)
+        for signup in su_root.iter(f"{{{ns}}}APISignUp"):
+            fields = {child.tag.split("}")[-1]: child.text for child in signup}
+            return jsonify({"timeslot": tids[0], "fields": fields})
+        return jsonify({"error": "No signups in timeslot"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
 if __name__ == "__main__":
     import socket
     hostname = socket.gethostname()

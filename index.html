@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MBRL Scan-to-Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cardinal:      #990000;
+  --cardinal-dark: #6e0000;
+  --gold:          #FFCC00;
+  --green:         #2a7a45;
+  --green-dark:    #1d5c32;
+  --green-lite:    #edf7f1;
+  --bg:            #f4f2ef;
+  --white:         #ffffff;
+  --ink:           #1c1410;
+  --muted:         #9e9085;
+  --border:        #ddd8d0;
+  --serif:         'Libre Baskerville', Georgia, serif;
+  --sans:          'Inter', system-ui, sans-serif;
+
+  /* mode-aware colours (overridden in checkout mode) */
+  --mode-color:    var(--cardinal);
+  --mode-dark:     var(--cardinal-dark);
+  --mode-lite:     #fff8f8;
+}
+
+body.checkout-mode {
+  --mode-color: var(--green);
+  --mode-dark:  var(--green-dark);
+  --mode-lite:  var(--green-lite);
+}
+
+html, body { min-height: 100%; background: var(--bg); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+
+/* ── Topbar ── */
+.topbar {
+  background: var(--cardinal);
+  padding: 0 24px; height: 56px;
+  display: flex; align-items: center; gap: 16px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  transition: background 0.3s;
+}
+body.checkout-mode .topbar { background: var(--green); }
+.topbar::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px; background: var(--gold);
+}
+.brand { display: flex; flex-direction: column; line-height: 1.2; }
+.brand-usc { font-family: var(--serif); font-size: 9px; font-weight: 700; color: var(--gold); letter-spacing: 0.12em; text-transform: uppercase; }
+.brand-lab { font-family: var(--serif); font-size: 14px; font-weight: 700; color: #fff; }
+.topbar-div { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
+.topbar-page { font-size: 12px; color: rgba(255,255,255,0.6); }
+.topbar-date { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 500; letter-spacing: 0.03em; }
+.topbar-status { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.s-pip { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.25); flex-shrink: 0; transition: all 0.3s; }
+.s-pip.ready { background: #5cd68a; box-shadow: 0 0 5px rgba(92,214,138,0.5); }
+.s-pip.error { background: #ff6b6b; }
+.s-pip.busy  { background: var(--gold); }
+.s-txt { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.55); transition: color 0.2s; }
+.s-txt.ready { color: #5cd68a; } .s-txt.error { color: #ff9999; } .s-txt.busy { color: var(--gold); }
+
+/* ── Mode toggle ── */
+.mode-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 24px;
+}
+.mode-tab {
+  padding: 12px 20px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; cursor: pointer;
+  border-bottom: 3px solid transparent;
+  color: var(--muted); transition: all 0.15s;
+  background: none; border-top: none; border-left: none; border-right: none;
+  font-family: var(--sans);
+}
+.mode-tab:hover { color: var(--ink); }
+.mode-tab.active-checkin  { color: var(--cardinal); border-bottom-color: var(--cardinal); }
+.mode-tab.active-checkout { color: var(--green);    border-bottom-color: var(--green); }
+
+/* ── Page ── */
+.page {
+  max-width: 960px; margin: 0 auto;
+  padding: 24px 20px 60px;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 20px; align-items: start;
+}
+
+/* ── Panel ── */
+.panel {
+  background: var(--white); border-radius: 8px; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
+}
+.panel-head { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.panel-accent { width: 3px; height: 13px; border-radius: 2px; flex-shrink: 0; background: var(--mode-color); transition: background 0.3s; }
+.panel-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mode-color); transition: color 0.3s; }
+.panel-body { padding: 18px; }
+
+/* ── Camera ── */
+.camera-box {
+  position: relative; width: 100%; aspect-ratio: 4/3;
+  background: #111; border-radius: 6px; overflow: hidden; border: 1px solid #222;
+}
+#camera-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+#camera-canvas { display: none; }
+.scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; background: rgba(0,0,0,0.15); }
+.qr-frame { width: 48%; aspect-ratio: 1; position: relative; }
+.qr-frame::before, .qr-frame::after, .qr-frame span::before, .qr-frame span::after {
+  content: ''; position: absolute; width: 18px; height: 18px;
+  border-color: var(--gold); border-style: solid; opacity: 0.9;
+}
+.qr-frame::before  { top: 0; left: 0;   border-width: 2.5px 0 0 2.5px; }
+.qr-frame::after   { top: 0; right: 0;  border-width: 2.5px 2.5px 0 0; }
+.qr-frame span::before { bottom: 0; left: 0;  border-width: 0 0 2.5px 2.5px; }
+.qr-frame span::after  { bottom: 0; right: 0; border-width: 0 2.5px 2.5px 0; }
+.scan-sweep {
+  position: absolute; left: 5%; right: 5%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold) 40%, var(--gold) 60%, transparent);
+  animation: sweep 2s ease-in-out infinite;
+}
+@keyframes sweep { 0% { top: 5%; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { top: 95%; opacity: 0; } }
+.camera-idle { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #0e0a07; }
+.camera-idle-icon { width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 20px; opacity: 0.4; }
+.camera-idle p { font-size: 12px; color: rgba(255,255,255,0.32); text-align: center; line-height: 1.6; }
+.camera-https-note { display: none; background: #fff8e6; border: 1px solid #f0c040; border-radius: 6px; padding: 10px 14px; margin-top: 12px; font-size: 11.5px; color: #5a4500; line-height: 1.5; }
+.btn-camera { margin-top: 12px; width: 100%; padding: 11px; border-radius: 6px; border: 1.5px solid var(--mode-color); background: transparent; color: var(--mode-color); font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.btn-camera:hover, .btn-camera.active { background: var(--mode-color); color: #fff; }
+
+/* ── ID Well ── */
+.id-well {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px 16px 12px; margin-bottom: 18px; min-height: 80px;
+  display: flex; flex-direction: column; justify-content: center; transition: background 0.3s;
+}
+.id-well-label { font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.id-value { font-family: var(--serif); font-size: 44px; font-weight: 700; line-height: 1; color: var(--ink); letter-spacing: 0.03em; transition: color 0.2s; }
+.id-value.empty   { color: var(--border); }
+.id-value.success { color: var(--mode-color); }
+.id-value.fail    { color: #b33; }
+@keyframes pop-gold { 0% { background: rgba(255,204,0,0.2); } 100% { background: var(--bg); } }
+.id-well.flash { animation: pop-gold 0.5s ease-out forwards; }
+@keyframes pop-green { 0% { background: rgba(42,122,69,0.15); } 100% { background: var(--bg); } }
+.id-well.flash-green { animation: pop-green 0.5s ease-out forwards; }
+
+/* ── Entry ── */
+.entry-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; display: block; }
+.entry-row { display: flex; gap: 8px; }
+.entry-input { flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 6px; padding: 10px 14px; font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: 0.05em; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
+.entry-input:focus { border-color: var(--mode-color); background: var(--white); }
+.entry-input::placeholder { color: var(--border); }
+
+.btn-action { padding: 10px 22px; border-radius: 6px; border: none; background: var(--mode-color); color: #fff; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; -webkit-appearance: none; white-space: nowrap; }
+.btn-action:hover { background: var(--mode-dark); }
+.btn-action:active { transform: scale(0.97); }
+.btn-action:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+.entry-hint { margin-top: 7px; font-size: 11px; color: var(--muted); min-height: 16px; transition: color 0.2s; }
+.entry-hint.ok   { color: var(--green); }
+.entry-hint.err  { color: #b33; }
+.entry-hint.warn { color: #b87300; }
+
+/* ── Timeslot picker ── */
+.timeslot-row { display:none; margin-bottom:14px; }
+.timeslot-row.visible { display:block; }
+.timeslot-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.headcount-pill { font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px;
+  background:#f0f0f0; color:#666; }
+.headcount-pill.all-in { background:#edf7f1; color:var(--green); }
+.headcount-pill.some-in { background:#fffbeb; color:#b87300; }
+
+/* ── Study lock ── */
+.study-lock-bar { display:none; font-size:11px; color:var(--muted); margin-top:4px;
+  display:flex; align-items:center; gap:6px; }
+.study-lock-bar.locked { display:flex; }
+.unlock-btn { font-size:11px; color:var(--cardinal); cursor:pointer; text-decoration:underline; margin-left:auto; }
+
+/* ── Roster panel ── */
+.roster-panel { background:var(--white); border-radius:8px; overflow:hidden;
+  grid-column: 1 / -1; margin-top:0; }
+.roster-head { display:flex; align-items:center; gap:10px; padding:10px 16px;
+  border-bottom:1px solid var(--border); }
+.roster-head .panel-label { font-size:11px; font-weight:700; letter-spacing:0.07em;
+  text-transform:uppercase; color:var(--muted); }
+.roster-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.roster-btn { font-size:11px; font-weight:600; padding:4px 10px; border-radius:4px;
+  cursor:pointer; border:1px solid var(--border); background:var(--white); color:var(--ink);
+  font-family:var(--sans); }
+.roster-btn:hover { background:#f5f5f5; }
+.roster-btn.export { border-color:#bbd6ff; background:#f0f6ff; color:#2060cc; }
+.queue-badge { font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px;
+  background:#fff3cd; color:#856404; border:1px solid #ffc107; display:none; }
+.queue-badge.visible { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+.roster-table { width:100%; border-collapse:collapse; font-size:12px; }
+.roster-table th { padding:7px 14px; text-align:left; font-size:10px; font-weight:700;
+  letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);
+  border-bottom:1px solid var(--border); background:#fafaf9; }
+.roster-table td { padding:8px 14px; border-bottom:1px solid #f0ede8; color:var(--ink); }
+.roster-table tr:last-child td { border-bottom:none; }
+.roster-table tr:hover td { background:#fafaf9; }
+.rt-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px;
+  font-weight:700; letter-spacing:0.04em; text-transform:uppercase; }
+.rt-badge.in  { background:#edf7f1; color:var(--green); }
+.rt-badge.out { background:#fff3f3; color:#b33; }
+.roster-empty { padding:24px; text-align:center; color:var(--muted); font-size:12px; }
+
+/* ── Queue indicator ── */
+.queue-retry-btn { font-size:11px; color:#856404; text-decoration:underline; cursor:pointer; }
+
+/* ── Participant info card ── */
+.pax-card {
+  display: none;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fafaf9;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.pax-card.visible { display: block; }
+.pax-card-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  background: var(--mode-color);
+  color: white;
+  font-size: 12px; font-weight: 600;
+}
+.pax-card-head .pax-id { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.pax-card-head .pax-name { opacity: 0.85; font-size: 12px; }
+.pax-card-head .pax-spinner { margin-left: auto; font-size: 12px; opacity: 0.7; }
+.pax-card-body { padding: 10px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.pax-field { font-size: 12px; }
+.pax-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 1px; }
+.pax-val { color: var(--ink); }
+.pax-val.credit-granted  { color: var(--green); font-weight: 600; }
+.pax-val.credit-pending  { color: #b87300; font-weight: 600; }
+.pax-val.credit-ns       { color: var(--muted); }
+.pax-val.not-found       { color: #b33; font-style: italic; }
+
+.verify-bar { display:none; margin-bottom:12px; border-radius:6px; padding:9px 14px; font-size:12px; font-weight:500; line-height:1.4; }
+.verify-bar.showing  { display:flex; align-items:center; gap:8px; }
+.verify-bar.ok   { background:#edf7f1; color:var(--green); border:1px solid #b8dfc8; }
+.verify-bar.err  { background:#fef2f2; color:#b33; border:1px solid #f5c0c0; }
+.verify-bar.warn { background:#fffbeb; color:#b87300; border:1px solid #fcd34d; }
+.verify-bar .vb-icon { font-size:14px; flex-shrink:0; }
+.vb-override { margin-left:auto; font-size:11px; cursor:pointer; text-decoration:underline; opacity:0.7; white-space:nowrap; }
+
+/* ── Checkout extra fields ── */
+.checkout-fields { display: none; margin-bottom: 14px; }
+body.checkout-mode .checkout-fields { display: block; }
+.field-group { margin-bottom: 10px; }
+.field-input { width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 6px; padding: 9px 12px; font-family: var(--sans); font-size: 14px; color: var(--ink); outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
+.field-input:focus { border-color: var(--green); background: var(--white); }
+.field-input::placeholder { color: var(--muted); font-size: 13px; }
+
+/* ── Stats ── */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 18px; }
+.stat-cell { background: var(--white); padding: 12px 16px; }
+.stat-label { font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.stat-val { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1; }
+.stat-val.accent { color: var(--mode-color); transition: color 0.3s; }
+
+/* ── Integration status pills ── */
+.integration-row { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.int-pill { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 10px; letter-spacing: 0.04em; }
+.int-pill.on  { background: #e8f5ee; color: var(--green); border: 1px solid #b8dfc8; }
+.int-pill.off { background: #f5f3f0; color: var(--muted); border: 1px solid var(--border); }
+
+.printer-line { margin-top: 10px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+/* ── Checkout result box ── */
+.checkout-result { display: none; margin-top: 14px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+.checkout-result.visible { display: block; }
+.cr-head { padding: 10px 14px; font-size: 12px; font-weight: 700; }
+.cr-head.ok  { background: var(--green-lite); color: var(--green); }
+.cr-head.err { background: #fef2f2; color: #b33; }
+.cr-steps { padding: 10px 14px; background: var(--white); }
+.cr-step { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink); padding: 3px 0; }
+.cr-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.cr-dot.ok  { background: var(--green); }
+.cr-dot.warn { background: #f59e0b; }
+.cr-dot.err { background: #ef4444; }
+
+/* ── Mobile ── */
+@media (max-width: 660px) {
+  .page { grid-template-columns: 1fr; padding: 16px 14px 48px; gap: 14px; direction: rtl; }
+  .page > * { direction: ltr; }
+  .topbar, .mode-bar { padding: 0 14px; }
+  .topbar { height: 52px; }
+  .brand-lab { font-size: 13px; }
+  .id-value { font-size: 38px; }
+  .camera-box { aspect-ratio: 16/9; }
+  .mode-tab { padding: 10px 14px; font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-usc">USC Marshall</span>
+    <span class="brand-lab">Behavioral Research Lab</span>
+  </div>
+  <div class="topbar-div"></div>
+  <span class="topbar-page" id="topbar-page">Check-In</span>
+  <div class="topbar-date" id="topbar-date"></div>
+  <a href="/docs" target="_blank" style="font-size:11px;color:rgba(255,255,255,0.5);text-decoration:none;font-weight:500;margin-left:8px;">Docs</a>
+  <div class="topbar-status">
+    <div class="s-pip" id="s-pip"></div>
+    <span class="s-txt" id="s-txt">Connecting…</span>
+  </div>
+</header>
+
+<!-- Mode toggle -->
+<nav class="mode-bar">
+  <button class="mode-tab active-checkin" id="tab-checkin"  onclick="setMode('checkin')">⬆ Check-In</button>
+  <button class="mode-tab"                id="tab-checkout" onclick="setMode('checkout')">⬇ Check-Out</button>
+</nav>
+
+<div class="page">
+
+  <!-- Camera panel -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-accent"></div>
+      <span class="panel-label" id="camera-panel-label">Camera Scanner</span>
+    </div>
+    <div class="panel-body">
+      <div class="camera-box">
+        <video id="camera-video" playsinline autoplay muted></video>
+        <canvas id="camera-canvas"></canvas>
+        <div class="scan-overlay" id="scan-overlay" style="display:none">
+          <div class="qr-frame"><span></span><div class="scan-sweep"></div></div>
+        </div>
+        <div class="camera-idle" id="camera-idle">
+          <div class="camera-idle-icon">📷</div>
+          <p>Tap Start Camera<br>to scan with your device</p>
+        </div>
+      </div>
+      <div class="camera-https-note" id="https-note">
+        <strong>Camera unavailable on this device.</strong><br>
+        Camera scanning requires the iPad or lab Mac. Use manual entry or the USB scanner.
+      </div>
+      <button class="btn-camera" id="btn-cam" onclick="toggleCamera()">Start Camera</button>
+    </div>
+  </div>
+
+  <!-- Controls panel -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-accent"></div>
+      <span class="panel-label" id="controls-panel-label">Participant ID</span>
+    </div>
+    <div class="panel-body">
+
+      <div class="id-well" id="id-well">
+        <div class="id-well-label" id="id-well-label">SONA ID</div>
+        <div class="id-value empty" id="id-val">——</div>
+      </div>
+
+      <!-- Study dropdown — always visible -->
+      <div class="field-group" style="margin-bottom:6px">
+        <label class="entry-label" for="f-study">Study</label>
+        <select class="field-input" id="f-study" onchange="onStudySelect()">
+          <option value="">Loading studies…</option>
+        </select>
+      </div>
+      <div class="study-lock-bar" id="study-lock-bar">
+        <span>🔒 Study locked</span>
+        <span class="unlock-btn" onclick="unlockStudy()">Change</span>
+      </div>
+
+      <!-- Timeslot picker -->
+      <div class="timeslot-row" id="timeslot-row" style="margin-bottom:14px">
+        <div class="timeslot-head">
+          <label class="entry-label" style="margin:0">Today's Timeslot</label>
+          <span class="headcount-pill" id="headcount-pill"></span>
+        </div>
+        <select class="field-input" id="f-timeslot" onchange="onTimeslotSelect()">
+          <option value="">Loading timeslots…</option>
+        </select>
+      </div>
+
+      <!-- RA info — always visible -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="field-group" style="margin:0">
+          <label class="entry-label" for="f-ra-name">RA Name</label>
+          <input class="field-input" id="f-ra-name" type="text" placeholder="First Last" autocomplete="off">
+        </div>
+        <div class="field-group" style="margin:0">
+          <label class="entry-label" for="f-ra">RA Email</label>
+          <input class="field-input" id="f-ra" type="email" placeholder="ra@usc.edu" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Checkout-only fields -->
+      <div class="checkout-fields">
+        <div class="field-group" id="f-participant-email-group" style="display:none">
+          <label class="entry-label">Participant Email</label>
+          <div class="field-input" id="f-participant-email" style="background:#f5f5f5; color:#444; cursor:default; font-size:13px; display:flex; align-items:center;">—</div>
+        </div>
+      </div>
+
+      <!-- Participant info card -->
+      <div class="pax-card" id="pax-card">
+        <div class="pax-card-head">
+          <span class="pax-id" id="pax-card-id"></span>
+          <span class="pax-name" id="pax-card-name"></span>
+          <span class="pax-spinner" id="pax-card-spinner">Looking up…</span>
+        </div>
+        <div class="pax-card-body" id="pax-card-body"></div>
+      </div>
+
+      <!-- Verify bar (check-in only) -->
+      <div class="verify-bar" id="verify-bar">
+        <span class="vb-icon" id="vb-icon"></span>
+        <span id="vb-msg"></span>
+        <span class="vb-override" id="vb-override" onclick="overridePrint()" style="display:none">Print anyway</span>
+      </div>
+
+      <label class="entry-label" for="m-input" id="entry-label">Manual Entry</label>
+      <div class="entry-row">
+        <input class="entry-input" id="m-input" type="tel"
+          inputmode="numeric" pattern="[0-9]*" placeholder="123456"
+          autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn-action" id="btn-action" onclick="handleAction()">Print</button>
+      </div>
+      <div class="entry-hint" id="hint"></div>
+
+      <!-- Checkout result -->
+      <div class="checkout-result" id="checkout-result">
+        <div class="cr-head" id="cr-head"></div>
+        <div class="cr-steps" id="cr-steps"></div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="stat-label">Last ID</div>
+          <div class="stat-val accent" id="stat-last">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label" id="stat-label">Labels Printed</div>
+          <div class="stat-val" id="stat-count">0</div>
+        </div>
+      </div>
+
+      <div class="integration-row" id="integration-row"></div>
+
+      <div class="printer-line">
+        <span>🖨</span>
+        <span id="printer-text">Detecting printer…</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Roster panel ────────────────────────────────────────────── -->
+<div class="page" style="padding-top:0; padding-bottom:20px;">
+  <div class="roster-panel">
+    <div class="roster-head">
+      <div class="panel-accent" style="width:4px;height:20px;border-radius:2px;background:var(--mode-color);margin-right:6px;flex-shrink:0"></div>
+      <span class="panel-label">Session Roster</span>
+      <span id="queue-badge" class="queue-badge" onclick="retryQueue()" title="Click to retry">
+        <span id="queue-count">0</span> credit(s) queued — retry
+      </span>
+      <div class="roster-actions">
+        <button class="roster-btn export" onclick="exportLog('checkout')">↓ Checkout Log</button>
+        <button class="roster-btn export" onclick="exportLog('checkin')" style="border-color:#d4bbff;background:#f5f0ff;color:#5b2da6">↓ Check-In Log</button>
+        <button class="roster-btn" onclick="clearRoster()">Clear</button>
+      </div>
+    </div>
+    <div id="roster-body">
+      <div class="roster-empty">No participants yet this session</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let printerReady = false, checkinCount = 0, checkoutCount = 0, busy = false;
+let cameraActive = false, cameraStream = null, scanInterval = null;
+let lastScannedAt = 0, scanBuf = '', scanTimer = null;
+let currentMode = 'checkin';
+let sonaEnabled = false, emailEnabled = false;
+
+// ── HTTPS check ───────────────────────────────────────────────────────────
+const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+if (!isSecure) {
+  document.getElementById('https-note').style.display = 'block';
+  document.getElementById('btn-cam').style.display = 'none';
+}
+
+// ── Study list ────────────────────────────────────────────────────────────
+let studiesLoaded = false;
+
+async function loadStudies() {
+  const sel = document.getElementById('f-study');
+  sel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    const d = await (await fetch('/api/studies')).json();
+    if (d.ok && d.studies.length) {
+      sel.innerHTML = '<option value="">— Select study —</option>' +
+        d.studies.map(s => `<option value="${s.id}" data-name="${s.name}">${s.name}</option>`).join('');
+      studiesLoaded = true;
+    } else {
+      sel.innerHTML = '<option value="">Could not load studies</option>';
+    }
+  } catch {
+    sel.innerHTML = '<option value="">Server offline</option>';
+  }
+}
+
+// ── Audio feedback ───────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function getAudio() { if (!audioCtx) audioCtx = new AudioCtx(); return audioCtx; }
+
+function playTone(type) {
+  try {
+    const ctx = getAudio();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    if (type === 'success') {
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(); osc.stop(ctx.currentTime + 0.25);
+    } else if (type === 'error') {
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.setValueAtTime(220, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(); osc.stop(ctx.currentTime + 0.35);
+    } else if (type === 'warn') {
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    }
+  } catch {}
+}
+
+// ── Study lock ────────────────────────────────────────────────────────────
+let studyLocked = false;
+
+function lockStudy() {
+  studyLocked = true;
+  document.getElementById('f-study').disabled = true;
+  document.getElementById('study-lock-bar').classList.add('locked');
+}
+
+function unlockStudy() {
+  studyLocked = false;
+  document.getElementById('f-study').disabled = false;
+  document.getElementById('study-lock-bar').classList.remove('locked');
+}
+
+// ── Timeslots ─────────────────────────────────────────────────────────────
+let currentTimeslotCount = 0;
+
+async function loadTimeslots(expId) {
+  const row = document.getElementById('timeslot-row');
+  const sel = document.getElementById('f-timeslot');
+  const pill = document.getElementById('headcount-pill');
+  if (!expId) { row.classList.remove('visible'); return; }
+
+  row.classList.add('visible');
+  sel.innerHTML = '<option value="">Loading timeslots…</option>';
+  pill.textContent = '';
+
+  try {
+    const d = await (await fetch(`/api/timeslots?exp_id=${expId}`)).json();
+    if (d.ok && d.timeslots.length) {
+      sel.innerHTML = '<option value="">— Select timeslot —</option>' +
+        d.timeslots.map(t => `<option value="${t.id}" data-count="${t.count}" data-location="${t.location || ''}">${t.time} — ${t.count}/${t.capacity} signed up${t.location ? ' · ' + t.location.split('(')[0].trim() : ''}</option>`).join('');
+      // Auto-select if only one timeslot
+      if (d.timeslots.length === 1) {
+        sel.selectedIndex = 1;
+        onTimeslotSelect();
+      }
+    } else {
+      sel.innerHTML = '<option value="">No timeslots today</option>';
+      pill.textContent = 'No slots today';
+    }
+  } catch {
+    sel.innerHTML = '<option value="">Could not load</option>';
+  }
+}
+
+function onTimeslotSelect() {
+  const sel = document.getElementById('f-timeslot');
+  const opt = sel.options[sel.selectedIndex];
+  const pill = document.getElementById('headcount-pill');
+  if (opt && opt.dataset.count) {
+    currentTimeslotCount = parseInt(opt.dataset.count) || 0;
+    pill.textContent = `0 / ${currentTimeslotCount} checked in`;
+    pill.className = 'headcount-pill';
+    updateHeadcount();
+  } else {
+    pill.textContent = '';
+    currentTimeslotCount = 0;
+  }
+}
+
+function updateHeadcount() {
+  const pill = document.getElementById('headcount-pill');
+  if (!currentTimeslotCount) return;
+  const n = checkinCount;
+  pill.textContent = `${n} / ${currentTimeslotCount} checked in`;
+  pill.className = 'headcount-pill ' + (n >= currentTimeslotCount ? 'all-in' : 'some-in');
+}
+
+function onStudySelect() {
+  const sel = document.getElementById('f-study');
+  const expId = sel.value;
+  loadTimeslots(expId);
+  // Hide timeslot if no study
+  if (!expId) {
+    document.getElementById('timeslot-row').classList.remove('visible');
+  }
+}
+
+// ── Roster ────────────────────────────────────────────────────────────────
+async function refreshRoster() {
+  try {
+    const d = await (await fetch('/api/roster')).json();
+    renderRoster(d.roster || []);
+  } catch {}
+}
+
+function renderRoster(roster) {
+  const body = document.getElementById('roster-body');
+  if (!roster.length) {
+    body.innerHTML = '<div class="roster-empty">No participants yet this session</div>';
+    return;
+  }
+  const rows = roster.map(r => `
+    <tr>
+      <td><strong>${r.sona_id}</strong></td>
+      <td><span class="rt-badge ${r.type === 'checkin' ? 'in' : 'out'}">${r.type === 'checkin' ? 'In' : 'Out'}</span></td>
+      <td>${r.ts}</td>
+      <td style="color:var(--muted)">${r.experiment || '—'}</td>
+      <td style="color:var(--muted)">${r.ra || '—'}</td>
+      <td style="color:var(--muted)">${r.email || '—'}</td>
+    </tr>`).join('');
+  body.innerHTML = `<table class="roster-table">
+    <thead><tr>
+      <th>SONA ID</th><th>Status</th><th>Time</th><th>Study</th><th>RA</th><th>Participant Email</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function clearRoster() {
+  if (!confirm('Clear the session roster?')) return;
+  await fetch('/api/roster/clear', { method: 'POST' });
+  checkinCount = 0; checkoutCount = 0;
+  currentTimeslotCount = 0;
+  document.getElementById('stat-count').textContent = '0';
+  document.getElementById('stat-last').textContent = '—';
+  document.getElementById('headcount-pill').textContent = '';
+  renderRoster([]);
+  unlockStudy();
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+function exportLog(type='checkout') {
+  window.open(`/api/export?type=${type}`, '_blank');
+}
+
+// ── Offline queue ─────────────────────────────────────────────────────────
+async function checkQueue() {
+  try {
+    const d = await (await fetch('/api/queue')).json();
+    const badge = document.getElementById('queue-badge');
+    const cnt   = document.getElementById('queue-count');
+    if (d.count > 0) {
+      cnt.textContent = d.count;
+      badge.classList.add('visible');
+    } else {
+      badge.classList.remove('visible');
+    }
+  } catch {}
+}
+
+async function retryQueue() {
+  const d = await (await fetch('/api/queue/process', { method: 'POST' })).json();
+  checkQueue();
+  if (d.processed > 0) {
+    alert(`Granted ${d.processed} queued credit(s). ${d.remaining} remaining.`);
+  }
+}
+
+// ── Mode toggle ───────────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  const isOut = mode === 'checkout';
+
+  document.body.classList.toggle('checkout-mode', isOut);
+  document.getElementById('topbar-page').textContent    = isOut ? 'Check-Out' : 'Check-In';
+  document.getElementById('tab-checkin').className      = 'mode-tab' + (isOut ? '' : ' active-checkin');
+  document.getElementById('tab-checkout').className     = 'mode-tab' + (isOut ? ' active-checkout' : '');
+  document.getElementById('camera-panel-label').textContent  = isOut ? 'Scan Returned Label' : 'Camera Scanner';
+  document.getElementById('controls-panel-label').textContent = isOut ? 'Check-Out' : 'Participant ID';
+  document.getElementById('id-well-label').textContent  = 'SONA ID';
+  document.getElementById('btn-action').textContent     = isOut ? 'Check Out' : 'Print';
+  document.getElementById('entry-label').textContent    = 'Manual Entry';
+  document.getElementById('stat-label').textContent     = isOut ? 'Checked Out' : 'Labels Printed';
+
+  setIDVal('', '');
+  setHint('', '');
+  hidePaxCard();
+  document.getElementById('checkout-result').classList.remove('visible');
+
+  document.getElementById('stat-count').textContent = isOut ? checkoutCount : checkinCount;
+  if (!isOut) setParticipantEmail('');
+
+  if (isOut && !studiesLoaded) loadStudies();
+}
+
+// ── Status ────────────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const d = await (await fetch('/api/status')).json();
+    sonaEnabled  = d.sona  || false;
+    emailEnabled = d.email || false;
+
+    if (d.ok) {
+      printerReady = true;
+      setSt('ready', 'Ready');
+      document.getElementById('printer-text').textContent = `${d.label} · ${d.printer}`;
+    } else {
+      printerReady = false;
+      setSt('error', 'No printer');
+      document.getElementById('printer-text').textContent = 'Connect HP KE203 or Dymo LabelWriter';
+    }
+    renderIntegrations();
+  } catch {
+    printerReady = false;
+    setSt('error', 'Server offline');
+    document.getElementById('printer-text').textContent = 'Run start.sh on the lab Mac';
+  }
+}
+
+function renderIntegrations() {
+  const row = document.getElementById('integration-row');
+  row.innerHTML = `
+    <span class="int-pill ${sonaEnabled  ? 'on' : 'off'}">${sonaEnabled  ? '✓' : '○'} SONA</span>
+    <span class="int-pill ${emailEnabled ? 'on' : 'off'}">${emailEnabled ? '✓' : '○'} Email</span>
+    <span class="int-pill on">✓ CSV Log</span>
+  `;
+}
+
+function setSt(state, text) {
+  document.getElementById('s-pip').className = `s-pip ${state}`;
+  const t = document.getElementById('s-txt');
+  t.className = `s-txt ${state}`; t.textContent = text;
+}
+
+// ── Main action handler ───────────────────────────────────────────────────
+function handleAction() {
+  const id = document.getElementById('m-input').value.trim();
+  if (id) {
+    currentMode === 'checkout' ? doCheckout(id) : doPrint(id);
+  }
+}
+
+// ── Check-In (print label) ────────────────────────────────────────────────
+let pendingPrintId = null;
+
+function overridePrint() {
+  if (pendingPrintId) {
+    setVerifyBar(null);
+    executePrint(pendingPrintId);
+  }
+}
+
+function setVerifyBar(state, msg, showOverride) {
+  const bar = document.getElementById('verify-bar');
+  const icon = document.getElementById('vb-icon');
+  const msgEl = document.getElementById('vb-msg');
+  const ovr = document.getElementById('vb-override');
+  bar.className = 'verify-bar' + (state ? ' showing ' + state : '');
+  icon.textContent = state === 'ok' ? '✓' : state === 'err' ? '⚠' : state === 'warn' ? '⚠' : '';
+  msgEl.textContent = msg || '';
+  ovr.style.display = showOverride ? 'inline' : 'none';
+}
+
+async function doPrint(id) {
+  id = id.trim();
+  if (!id || busy) return;
+  if (!printerReady) { setHint('Printer not ready', 'err'); return; }
+
+  pendingPrintId = id;
+
+  // Show participant card immediately, load info in background
+  if (sonaEnabled) {
+    showPaxCard(id);
+    loadParticipantInfo(id);
+  }
+
+  const sel2 = document.getElementById('f-study');
+  const expId = sel2.value;
+
+  // Verify signup if study is selected
+  if (expId && sonaEnabled) {
+    setIDVal(id, '');
+    setVerifyBar('warn', 'Checking SONA…');
+    setHint('', '');
+    try {
+      const v = await (await fetch('/api/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sona_id: id, exp_id: expId })
+      })).json();
+
+      if (v.ok === true) {
+        setVerifyBar('ok', v.msg || 'Signup confirmed');
+        executePrint(id);
+      } else if (v.ok === null) {
+        // Can't verify — proceed silently
+        setVerifyBar(null);
+        executePrint(id);
+      } else {
+        // Not found — warn and allow override
+        setVerifyBar('err', v.msg || 'No signup found for this study', true);
+        setIDVal(id, 'fail');
+        setHint('Participant not found in SONA for selected study', 'warn');
+        document.getElementById('m-input').value = '';
+        return;
+      }
+    } catch {
+      setVerifyBar(null);
+      executePrint(id);
+    }
+  } else {
+    setVerifyBar(null);
+    executePrint(id);
+  }
+}
+
+async function executePrint(id, force=false) {
+  if (!id || busy) return;
+  busy = true;
+  setIDVal(id, ''); setHint('Sending to printer…', '');
+  document.getElementById('btn-action').disabled = true;
+  setSt('busy', 'Printing…');
+
+  try {
+    const sel2 = document.getElementById('f-study');
+    const selOpt2 = sel2.options[sel2.selectedIndex];
+    const d = await (await fetch('/api/print', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sona_id:    id,
+        experiment: selOpt2 && selOpt2.dataset.name ? selOpt2.dataset.name : '',
+        exp_id:     sel2.value || '',
+        ra_name:    document.getElementById('f-ra-name').value.trim(),
+        ra_email:   document.getElementById('f-ra').value.trim(),
+        force:      force,
+      })
+    })).json();
+
+    if (d.ok) {
+      checkinCount++;
+      document.getElementById('stat-count').textContent = checkinCount;
+      document.getElementById('stat-last').textContent = id;
+      setIDVal(id, 'success');
+      setHint(`✓ Label printed · ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`, 'ok');
+      flashWell(false);
+      setSt('ready', 'Ready');
+      playTone('success');
+      updateHeadcount();
+      refreshRoster();
+      if (!studyLocked) lockStudy();
+    } else if (d.duplicate) {
+      setIDVal(id, 'fail');
+      setHint(`⚠ Already checked in this session`, 'warn');
+      playTone('warn');
+      setSt('ready', 'Ready');
+      setVerifyBar('warn', `Participant ${id} already checked in — print again?`, true);
+      pendingPrintId = id;
+      // Set force flag on override
+      document.getElementById('vb-override').onclick = () => {
+        setVerifyBar(null);
+        executePrint(id, true);
+      };
+      document.getElementById('m-input').value = '';
+      return;
+    } else {
+      setIDVal(id, 'fail');
+      setHint(`✗ ${d.error || 'Print failed'}`, 'err');
+      playTone('error');
+      setSt('ready', 'Ready');
+    }
+  } catch {
+    setIDVal(id, 'fail'); setHint('✗ Could not reach print server', 'err'); setSt('error', 'Server offline');
+  }
+  busy = false;
+  document.getElementById('btn-action').disabled = false;
+  document.getElementById('m-input').value = '';
+  pendingPrintId = null;
+}
+
+// ── Check-Out ─────────────────────────────────────────────────────────────
+function setParticipantEmail(email) {
+  const grp = document.getElementById('f-participant-email-group');
+  const el  = document.getElementById('f-participant-email');
+  if (email) {
+    el.textContent = email;
+    grp.style.display = '';
+  } else {
+    el.textContent = '—';
+    grp.style.display = 'none';
+  }
+}
+
+// ── Participant info card ─────────────────────────────────────────────────
+function showPaxCard(sonaId) {
+  const card    = document.getElementById('pax-card');
+  const cardId  = document.getElementById('pax-card-id');
+  const cardName= document.getElementById('pax-card-name');
+  const spinner = document.getElementById('pax-card-spinner');
+  const body    = document.getElementById('pax-card-body');
+
+  card.classList.add('visible');
+  cardId.textContent  = sonaId;
+  cardName.textContent = '';
+  spinner.textContent = 'Looking up…';
+  body.innerHTML = '';
+}
+
+function hidePaxCard() {
+  document.getElementById('pax-card').classList.remove('visible');
+}
+
+async function loadParticipantInfo(sonaId) {
+  const sel    = document.getElementById('f-study');
+  const expId  = sel.value || '';
+  const spinner = document.getElementById('pax-card-spinner');
+  const body    = document.getElementById('pax-card-body');
+  const cardName= document.getElementById('pax-card-name');
+
+  try {
+    const d = await (await fetch('/api/participant', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sona_id: sonaId, exp_id: expId })
+    })).json();
+
+    spinner.textContent = '';
+
+    if (d.ok) {
+      // Name in header
+      const fullName = [d.first_name, d.last_name].filter(Boolean).join(' ');
+      cardName.textContent = fullName ? `· ${fullName}` : '';
+
+      // Credit status class
+      const cs = (d.credit_status || '').toLowerCase();
+      const creditClass = cs.includes('grant') ? 'credit-granted'
+                        : cs.includes('pend')  ? 'credit-pending'
+                        : 'credit-ns';
+
+      // Decode credit_status code
+      const csMap = { 'N': 'Not Yet Granted', 'G': 'Granted', 'NS': 'No Show', 'U': 'Unexcused' };
+      const csDisplay = csMap[d.credit_status] || d.credit_status || '—';
+
+      // Format signup date
+      let signupDisplay = '—';
+      if (d.signup_date && !d.signup_date.startsWith('0001')) {
+        try { signupDisplay = new Date(d.signup_date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); } catch {}
+      }
+
+      // Format timeslot date
+      let slotDisplay = '—';
+      if (d.timeslot_date && !d.timeslot_date.startsWith('0001')) {
+        try {
+          const sd = new Date(d.timeslot_date);
+          slotDisplay = sd.toLocaleDateString('en-US', {month:'short', day:'numeric'})
+                      + ' ' + sd.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+          if (d.duration) slotDisplay += ` (${d.duration} min)`;
+        } catch {}
+      }
+
+      const fields = [
+        { label: 'Email',          val: d.email          || '—', cls: '' },
+        { label: 'Credit Status',  val: csDisplay,               cls: creditClass },
+        { label: 'Timeslot',       val: slotDisplay,             cls: '' },
+        { label: 'Location',       val: d.location       || '—', cls: '' },
+        { label: 'Slot Fill',      val: (d.num_signed_up && d.num_students) ? `${d.num_signed_up} / ${d.num_students}` : '—', cls: '' },
+        { label: 'Phone',          val: d.phone          || '—', cls: '' },
+        { label: 'Student ID',     val: d.student_id_num || '—', cls: '' },
+        { label: 'Signup ID',      val: d.signup_id      || '—', cls: '' },
+      ].filter(f => f.val !== '—' || ['Email','Credit Status'].includes(f.label));
+
+      body.innerHTML = fields.map(f => `
+        <div class="pax-field">
+          <div class="pax-label">${f.label}</div>
+          <div class="pax-val ${f.cls}">${f.val}</div>
+        </div>`).join('');
+    } else {
+      body.innerHTML = `<div class="pax-field" style="grid-column:1/-1">
+        <div class="pax-val not-found">${d.msg || 'No SONA record found'}</div>
+      </div>`;
+    }
+  } catch {
+    spinner.textContent = '';
+    body.innerHTML = '<div class="pax-field" style="grid-column:1/-1"><div class="pax-val not-found">Lookup failed</div></div>';
+  }
+}
+
+async function doCheckout(id) {
+  id = id.trim();
+  if (!id || busy) return;
+
+  busy = true;
+  setIDVal(id, ''); setHint('Processing checkout…', '');
+  document.getElementById('btn-action').disabled = true;
+  document.getElementById('checkout-result').classList.remove('visible');
+  setSt('busy', 'Checking out…');
+
+  // Show participant card immediately
+  if (sonaEnabled) {
+    showPaxCard(id);
+    loadParticipantInfo(id);
+  }
+
+  const sel = document.getElementById('f-study');
+  const selOpt = sel.options[sel.selectedIndex];
+  const expId = sel.value || '';
+
+  // Look up participant email from SONA if study is selected
+  if (expId && sonaEnabled) {
+    try {
+      const v = await (await fetch('/api/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sona_id: id, exp_id: expId })
+      })).json();
+      setParticipantEmail(v.email || '');
+    } catch { setParticipantEmail(''); }
+  } else {
+    setParticipantEmail('');
+  }
+
+  const pEmail = document.getElementById('f-participant-email').textContent;
+  const payload = {
+    sona_id:           id,
+    experiment:        selOpt && selOpt.dataset.name ? selOpt.dataset.name : '',
+    exp_id:            expId,
+    ra_name:           document.getElementById('f-ra-name').value.trim(),
+    ra_email:          document.getElementById('f-ra').value.trim(),
+    participant_email: (pEmail && pEmail !== '—') ? pEmail : '',
+  };
+
+  try {
+    const d = await (await fetch('/api/checkout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })).json();
+
+    if (d.ok) {
+      checkoutCount++;
+      document.getElementById('stat-count').textContent = checkoutCount;
+      document.getElementById('stat-last').textContent = id;
+      setIDVal(id, 'success');
+      setHint('', '');
+      flashWell(true);
+      setSt('ready', 'Ready');
+      playTone('success');
+      showCheckoutResult(d);
+      refreshRoster();
+      checkQueue();
+    } else {
+      setIDVal(id, 'fail'); setHint(`✗ ${d.error || 'Checkout failed'}`, 'err');
+      playTone('error'); setSt('ready', 'Ready');
+    }
+  } catch {
+    setIDVal(id, 'fail'); setHint('✗ Could not reach server', 'err'); setSt('error', 'Server offline');
+  }
+  busy = false;
+  document.getElementById('btn-action').disabled = false;
+  document.getElementById('m-input').value = '';
+}
+
+function showCheckoutResult(d) {
+  const el  = document.getElementById('checkout-result');
+  const hd  = document.getElementById('cr-head');
+  const st  = document.getElementById('cr-steps');
+
+  hd.textContent = `✓  Checked out: ${d.sona_id}`;
+  hd.className   = 'cr-head ok';
+
+  const steps = d.steps || {};
+  const rows = [
+    { label: 'CSV log',       val: steps.csv     },
+    { label: 'SONA credit',   val: steps.sona    },
+    { label: 'Email',         val: steps.email   },
+    { label: 'Receipt',       val: steps.receipt },
+  ];
+  // Show queue note if credit was queued
+  if (steps.sona && steps.sona.includes('queue')) {
+    checkQueue();
+  }
+  st.innerHTML = rows.map(r => {
+    const ok   = r.val && (r.val.includes('log') || r.val.includes('rant') || r.val.includes('ent') || r.val.includes('rinted') || r.val.includes('rue'));
+    const warn = r.val && (r.val.includes('config') || r.val.includes('not config') || r.val.includes('No ') || r.val.includes('queue'));
+    const dot  = ok ? 'ok' : warn ? 'warn' : 'err';
+    return `<div class="cr-step"><div class="cr-dot ${dot}"></div><span><strong>${r.label}:</strong> ${r.val || '—'}</span></div>`;
+  }).join('');
+
+  el.classList.add('visible');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function setIDVal(v, state) {
+  const el = document.getElementById('id-val');
+  el.textContent = v || '——'; el.className = `id-value ${v ? state : 'empty'}`;
+}
+function setHint(msg, cls) {
+  const el = document.getElementById('hint'); el.textContent = msg; el.className = `entry-hint ${cls}`;
+}
+function flashWell(green) {
+  const el = document.getElementById('id-well');
+  el.classList.remove('flash', 'flash-green');
+  void el.offsetWidth;
+  el.classList.add(green ? 'flash-green' : 'flash');
+}
+
+// ── USB scanner ───────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Escape clears input and resets state
+  if (e.key === 'Escape') {
+    document.getElementById('m-input').value = '';
+    setIDVal('', '');
+    setHint('', '');
+    setVerifyBar(null);
+    setParticipantEmail('');
+    hidePaxCard();
+    document.getElementById('m-input').focus();
+    return;
+  }
+  if (['m-input','f-ra','f-ra-name'].includes(document.activeElement?.id)) return;
+  if (e.key === 'Enter') {
+    if (scanBuf.length >= 3) {
+      const id = scanBuf.trim().replace(/\D/g, '');
+      scanBuf = ''; clearTimeout(scanTimer);
+      if (id.length >= 3) currentMode === 'checkout' ? doCheckout(id) : doPrint(id);
+    }
+    return;
+  }
+  if (e.key.length === 1) {
+    scanBuf += e.key;
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(() => { scanBuf = ''; }, 200);
+  }
+});
+document.getElementById('m-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleAction();
+});
+
+// ── Camera ────────────────────────────────────────────────────────────────
+async function toggleCamera() { cameraActive ? stopCamera() : await startCamera(); }
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
+    const vid = document.getElementById('camera-video');
+    vid.srcObject = cameraStream; await vid.play();
+    document.getElementById('camera-idle').style.display = 'none';
+    document.getElementById('scan-overlay').style.display = 'flex';
+    document.getElementById('btn-cam').textContent = 'Stop Camera';
+    document.getElementById('btn-cam').classList.add('active');
+    cameraActive = true;
+    scanInterval = setInterval(scanFrame, 200);
+  } catch { setHint('Camera access denied', 'err'); }
+}
+function stopCamera() {
+  clearInterval(scanInterval);
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  document.getElementById('camera-video').srcObject = null;
+  document.getElementById('camera-idle').style.display = 'flex';
+  document.getElementById('scan-overlay').style.display = 'none';
+  document.getElementById('btn-cam').textContent = 'Start Camera';
+  document.getElementById('btn-cam').classList.remove('active');
+  cameraActive = false;
+}
+function scanFrame() {
+  const vid = document.getElementById('camera-video');
+  const cvs = document.getElementById('camera-canvas');
+  if (vid.readyState !== vid.HAVE_ENOUGH_DATA) return;
+  if (Date.now() - lastScannedAt < 2000) return;
+  cvs.width = vid.videoWidth; cvs.height = vid.videoHeight;
+  const ctx = cvs.getContext('2d');
+  ctx.drawImage(vid, 0, 0, cvs.width, cvs.height);
+  const img = ctx.getImageData(0, 0, cvs.width, cvs.height);
+  const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+  if (code?.data?.trim().length >= 3) {
+    lastScannedAt = Date.now();
+    const id = code.data.trim().replace(/\D/g, '');
+    if (id.length >= 3) {
+      currentMode === 'checkout' ? doCheckout(id) : doPrint(id);
+    }
+  }
+}
+
+checkStatus();
+setInterval(checkStatus, 15000);
+setInterval(refreshRoster, 10000);
+setInterval(checkQueue, 30000);
+loadStudies();
+refreshRoster();
+checkQueue();
+
+function updateClock() {
+  const now = new Date();
+  const date = now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  const time = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('topbar-date').textContent = date + '  ·  ' + time;
+}
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
