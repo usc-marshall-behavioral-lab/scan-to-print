@@ -87,7 +87,7 @@ def make_qr(data):
 
 # ── Label generation ──────────────────────────────────────────────────────────
 
-def make_hp_label(sona_id, timestamp):
+def make_hp_label(sona_id, timestamp, experiment=""):
     """4x6 landscape check-in label for HP KE203."""
     path = tempfile.mktemp(suffix=".pdf")
     h, w = 6 * inch, 4 * inch
@@ -124,6 +124,17 @@ def make_hp_label(sona_id, timestamp):
             break
     c.setFillColorRGB(0.11, 0.08, 0.04)
     c.drawCentredString(left_cx, H - 1.82 * inch, sona_id)
+
+    if experiment:
+        c.setFillColorRGB(0.50, 0.45, 0.40)
+        c.setFont("Helvetica", 8)
+        # Truncate if too wide
+        exp_display = experiment
+        while exp_display and c.stringWidth(exp_display, "Helvetica", 8) > avail_w:
+            exp_display = exp_display[:-1]
+        if exp_display != experiment:
+            exp_display = exp_display[:-1] + "…"
+        c.drawCentredString(left_cx, H - 2.10 * inch, exp_display)
 
     box_y = 0.68 * inch
     box_h = 0.66 * inch
@@ -559,8 +570,9 @@ def get_studies():
 
 @app.route("/api/print", methods=["POST"])
 def print_label():
-    data    = request.get_json()
-    sona_id = (data.get("sona_id") or "").strip()
+    data       = request.get_json()
+    sona_id    = (data.get("sona_id")    or "").strip()
+    experiment = (data.get("experiment") or "").strip()
 
     if not sona_id:
         return jsonify({"ok": False, "error": "No SONA ID provided"}), 400
@@ -570,7 +582,7 @@ def print_label():
         return jsonify({"ok": False, "error": "No printer found"}), 503
 
     ts       = datetime.now().strftime("%b %d, %Y  \u00b7  %I:%M %p")
-    pdf_path = make_dymo_label(sona_id, ts) if ptype == "dymo" else make_hp_label(sona_id, ts)
+    pdf_path = make_dymo_label(sona_id, ts) if ptype == "dymo" else make_hp_label(sona_id, ts, experiment)
 
     try:
         if ptype == "dymo":

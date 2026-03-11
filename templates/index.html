@@ -278,16 +278,16 @@ body.checkout-mode .checkout-fields { display: block; }
         <div class="id-value empty" id="id-val">——</div>
       </div>
 
-      <!-- Checkout extra fields -->
+      <!-- Study dropdown — always visible -->
+      <div class="field-group" style="margin-bottom:14px">
+        <label class="entry-label" for="f-study">Study</label>
+        <select class="field-input" id="f-study" onchange="onStudySelect()">
+          <option value="">Loading studies…</option>
+        </select>
+      </div>
+
+      <!-- Checkout-only fields -->
       <div class="checkout-fields">
-        <div class="field-group">
-          <label class="entry-label" for="f-experiment">Experiment Name</label>
-          <input class="field-input" id="f-experiment" type="text" placeholder="e.g. Decision Making Study" autocomplete="off">
-        </div>
-        <div class="field-group">
-          <label class="entry-label" for="f-expid">SONA Experiment ID <span style="font-weight:400;text-transform:none;letter-spacing:0">(for auto-credit)</span></label>
-          <input class="field-input" id="f-expid" type="tel" inputmode="numeric" placeholder="e.g. 4521" autocomplete="off">
-        </div>
         <div class="field-group">
           <label class="entry-label" for="f-ra">RA Email</label>
           <input class="field-input" id="f-ra" type="email" placeholder="ra@usc.edu" autocomplete="off">
@@ -346,6 +346,30 @@ if (!isSecure) {
   document.getElementById('btn-cam').style.display = 'none';
 }
 
+// ── Study list ────────────────────────────────────────────────────────────
+let studiesLoaded = false;
+
+async function loadStudies() {
+  const sel = document.getElementById('f-study');
+  sel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    const d = await (await fetch('/api/studies')).json();
+    if (d.ok && d.studies.length) {
+      sel.innerHTML = '<option value="">— Select study —</option>' +
+        d.studies.map(s => `<option value="${s.id}" data-name="${s.name}">${s.name}</option>`).join('');
+      studiesLoaded = true;
+    } else {
+      sel.innerHTML = '<option value="">Could not load studies</option>';
+    }
+  } catch {
+    sel.innerHTML = '<option value="">Server offline</option>';
+  }
+}
+
+function onStudySelect() {
+  // nothing extra needed — value/name read at checkout time
+}
+
 // ── Mode toggle ───────────────────────────────────────────────────────────
 function setMode(mode) {
   currentMode = mode;
@@ -366,9 +390,10 @@ function setMode(mode) {
   setHint('', '');
   document.getElementById('checkout-result').classList.remove('visible');
 
-  // Reset count per mode switch
   sessionCount = 0;
   document.getElementById('stat-count').textContent = '0';
+
+  if (isOut && !studiesLoaded) loadStudies();
 }
 
 // ── Status ────────────────────────────────────────────────────────────────
@@ -430,9 +455,15 @@ async function doPrint(id) {
   setSt('busy', 'Printing…');
 
   try {
+    const sel2 = document.getElementById('f-study');
+    const selOpt2 = sel2.options[sel2.selectedIndex];
     const d = await (await fetch('/api/print', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sona_id: id })
+      body: JSON.stringify({
+        sona_id:    id,
+        experiment: selOpt2 && selOpt2.dataset.name ? selOpt2.dataset.name : '',
+        exp_id:     sel2.value || '',
+      })
     })).json();
 
     if (d.ok) {
@@ -467,10 +498,12 @@ async function doCheckout(id) {
   document.getElementById('checkout-result').classList.remove('visible');
   setSt('busy', 'Checking out…');
 
+  const sel = document.getElementById('f-study');
+  const selOpt = sel.options[sel.selectedIndex];
   const payload = {
     sona_id:    id,
-    experiment: document.getElementById('f-experiment').value.trim(),
-    exp_id:     document.getElementById('f-expid').value.trim(),
+    experiment: selOpt && selOpt.dataset.name ? selOpt.dataset.name : '',
+    exp_id:     sel.value || '',
     ra_email:   document.getElementById('f-ra').value.trim(),
   };
 
@@ -608,6 +641,7 @@ function scanFrame() {
 
 checkStatus();
 setInterval(checkStatus, 15000);
+loadStudies();
 </script>
 </body>
 </html>
